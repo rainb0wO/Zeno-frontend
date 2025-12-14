@@ -1,0 +1,302 @@
+/* Dashboard.css */
+
+.dashboard-container {
+  padding: 0;
+  width: 100%;
+}
+
+.dashboard-header {
+  margin-bottom: 32px;
+  width: 100%;
+}
+
+.dashboard-title {
+  margin: 0 0 8px 0 !important;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.dashboard-subtitle {
+  margin: 0 !important;
+  color: #666;
+  font-size: 14px;
+}
+
+/* 关键指标卡片 */
+.dashboard-metrics {
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.metric-card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+  height: 100%; /* 确保同一行卡片高度一致 */
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 不同卡片的特殊样式 */
+.employee-card {
+  border-left: 4px solid #52c41a;
+}
+
+.capacity-card {
+  border-left: 4px solid #1890ff;
+}
+
+.salary-card {
+  border-left: 4px solid #fa8c16;
+}
+
+.attendance-card {
+  border-left: 4px solid #722ed1;
+}
+
+.metric-content {
+  padding: 20px;
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.metric-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.metric-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.employee-icon {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.capacity-icon {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+.salary-icon {
+  background: rgba(250, 140, 22, 0.1);
+  color: #fa8c16;
+}
+
+.attendance-icon {
+  background: rgba(114, 46, 209, 0.1);
+  color: #722ed1;
+}
+
+.metric-trend {
+  margin-left: 8px;
+}
+
+.metric-description {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #999;
+}
+
+.metric-progress {
+  margin-top: 12px;
+  height: 8px;
+}
+
+/* 详细数据卡片 */
+.dashboard-details {
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.detail-card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.detail-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.detail-card .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.detail-card .ant-card-head-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.progress-section {
+  padding: 16px 0;
+}
+
+.progress-item {
+  margin-bottom: 24px; /* 增加间距 */
+}
+
+.progress-item:last-child {
+  margin-bottom: 0;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px; /* 统一间距 */
+}
+
+.progress-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.progress-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.progress-trend {
+  font-size: 16px;
+}
+
+.progress-trend.up {
+  color: #52c41a;
+}
+
+.progress-trend.down {
+  color: #ff4d4f;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+}
+
+.progress-bar .ant-progress-bg {
+  border-radius: 4px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 16px 0;
+  }
+  
+  .dashboard-header {
+    margin-bottom: 24px;
+  }
+  
+  .dashboard-title {
+    font-size: 20px !important;
+  }
+  
+  .metric-content {
+    padding: 16px;
+  }
+  
+  .metric-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}
+
+/* 动画效果 */
+.metric-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.detail-card {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 渐变色背景 */
+.ant-statistic-content {
+  font-weight: 600 !important;
+}
+
+/* 优化统计数字显示 */
+.ant-statistic {
+  margin: 0;
+}
+
+/* 卡片内部间距 */
+.ant-card-body {
+  padding: 24px;
+}
+
+/* 确保所有卡片的内边距一致 */
+.detail-card .ant-card-body {
+  padding: 24px;
+}
+
+.metric-card .ant-card-body {
+  padding: 0; /* metric-card由metric-content控制 */
+}
+
+/* 进度条样式优化 */
+.ant-progress-line {
+  margin: 0;
+}
+
+/* 标题样式 */
+.ant-typography {
+  margin: 0;
+}
+
+/* 调整列间距 - 使用固定 gutter */
+.ant-row {
+  margin: 0 -12px !important; /* gutter 24px 的一半 */
+  width: calc(100% + 24px) !important;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ant-col {
+  padding: 0 12px !important; /* gutter 24px 的一半 */
+}
