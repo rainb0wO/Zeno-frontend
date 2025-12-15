@@ -3,7 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } fro
 import { message } from 'antd';
 
 // API基础URL
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://47.116.114.170:3000/api';
 
 // 创建axios实例
 const request: AxiosInstance = axios.create({
