@@ -171,9 +171,16 @@ const MainLayout: React.FC = () => {
         width={240}
       >
         <div className="logo-container">
-          <Title level={3} className="logo-text">
-            {collapsed ? 'Zeno' : 'Zeno生产辅助'}
-          </Title>
+          <img 
+            src="/zeno-logo.png" 
+            alt="Zeno生产辅助" 
+            className="sidebar-logo"
+            style={{ 
+              width: collapsed ? '40px' : '80%',
+              height: 'auto',
+              transition: 'width 0.2s'
+            }}
+          />
         </div>
         <Menu
           theme="dark"
