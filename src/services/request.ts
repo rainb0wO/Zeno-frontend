@@ -3,7 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } fro
 import { message } from 'antd';
 
 // API基础URL
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://47.116.114.170:3000/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // 创建axios实例
 const request: AxiosInstance = axios.create({
@@ -18,16 +18,25 @@ const request: AxiosInstance = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   (config: any) => {
-    // 仅在开发环境显示详细日志
-    if (import.meta.env.DEV) {
-      console.log('请求:', config.url);
-    }
     // 从 localStorage 获取 token，但登录请求不需要携带 token
-    if (!config.url.includes('/auth/login')) {
+    if (!config.url.includes('/auth/login') && !config.url.includes('/auth/register')) {
       const token = localStorage.getItem('token');
+      console.log('请求拦截器 - URL:', config.url);
+      console.log('请求拦截器 - Token 是否存在:', !!token);
+      console.log('请求拦截器 - Token 值:', token ? token.substring(0, 30) + '...' : 'null');
+      
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        // 确保 token 不包含 "Bearer " 前缀（防止重复添加）
+        const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${cleanToken}`;
+        // 调试日志
+        console.log('请求拦截器 - 已添加 Authorization 头:', config.headers.Authorization.substring(0, 40) + '...');
+      } else {
+        console.warn('请求拦截器 - 未找到 token，无法添加 Authorization 头:', config.url);
       }
+    } else {
+      console.log('请求拦截器 - 登录/注册请求，跳过 token:', config.url);
     }
     
     return config;
@@ -47,10 +56,12 @@ request.interceptors.response.use(
     }
     const { data } = response;
     
-    // 如果响应中包含 token，保存到 localStorage
+    // 如果响应中包含 token，保存到 localStorage（确保不包含 Bearer 前缀）
     if (data.token) {
-      localStorage.setItem('token', data.token);
-      console.log('Token 已保存:', data.token.substring(0, 20) + '...');
+      // 移除可能存在的 "Bearer " 前缀，只保存纯 token
+      const cleanToken = data.token.startsWith('Bearer ') ? data.token.substring(7) : data.token;
+      localStorage.setItem('token', cleanToken);
+      console.log('Token 已保存:', cleanToken.substring(0, 20) + '...');
     }
     
     // 返回 data 对象，保持与业务代码一致

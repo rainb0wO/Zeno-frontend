@@ -42,7 +42,7 @@ export interface RegisterResponse {
 export const authApi = {
   // 获取验证码（返回完整URL）
   getCaptcha: (): string => {
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
     return `${BASE_URL}/auth/captcha?t=${Date.now()}`;
   },
 

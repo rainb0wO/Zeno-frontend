@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, message, Modal, Switch, Upload, Space, Select } from 'antd';
 import { UserOutlined, LockOutlined, BellOutlined, UploadOutlined, SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { settingsApi, type PersonalInfo, type Notifications } from '../services/settings';
+import { factoryApi, type Factory } from '../services/factory';
 import { useNavigate } from 'react-router-dom';
 
 const PersonalSettings = () => {
@@ -15,11 +16,22 @@ const PersonalSettings = () => {
     capacityAlert: true
   });
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [factories, setFactories] = useState<Factory[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadSettings();
+    loadFactories();
   }, []);
+
+  const loadFactories = async () => {
+    try {
+      const res = await factoryApi.getFactories();
+      setFactories(res.factories || []);
+    } catch (error) {
+      console.error('加载厂区列表失败:', error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -184,8 +196,11 @@ const PersonalSettings = () => {
 
           <Form.Item label="所属厂区" name="factoryId">
             <Select placeholder="请选择厂区">
-              <Select.Option value="1">深圳厂区</Select.Option>
-              <Select.Option value="2">广州厂区</Select.Option>
+              {factories.map(factory => (
+                <Select.Option key={factory.id} value={factory.id}>
+                  {factory.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 
