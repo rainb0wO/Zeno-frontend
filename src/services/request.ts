@@ -19,9 +19,13 @@ const request: AxiosInstance = axios.create({
 request.interceptors.request.use(
   (config: any) => {
     // 从 localStorage 获取 token，但登录请求不需要携带 token
-    if (!config.url.includes('/auth/login') && !config.url.includes('/auth/register')) {
+    const url = config.url;
+    const isLoginRequest = url.includes('/auth/login') || url.includes('/auth/register');
+    console.log('请求拦截器 - 完整URL:', url);
+    console.log('请求拦截器 - 是否为登录/注册请求:', isLoginRequest);
+    
+    if (!isLoginRequest) {
       const token = localStorage.getItem('token');
-      console.log('请求拦截器 - URL:', config.url);
       console.log('请求拦截器 - Token 是否存在:', !!token);
       console.log('请求拦截器 - Token 值:', token ? token.substring(0, 30) + '...' : 'null');
       
@@ -33,10 +37,10 @@ request.interceptors.request.use(
         // 调试日志
         console.log('请求拦截器 - 已添加 Authorization 头:', config.headers.Authorization.substring(0, 40) + '...');
       } else {
-        console.warn('请求拦截器 - 未找到 token，无法添加 Authorization 头:', config.url);
+        console.warn('请求拦截器 - 未找到 token，无法添加 Authorization 头:', url);
       }
     } else {
-      console.log('请求拦截器 - 登录/注册请求，跳过 token:', config.url);
+      console.log('请求拦截器 - 登录/注册请求，跳过 token:', url);
     }
     
     return config;
