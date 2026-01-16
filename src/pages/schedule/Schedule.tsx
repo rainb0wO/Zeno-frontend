@@ -8,6 +8,7 @@ import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/i
 import dayjs, { Dayjs } from 'dayjs';
 import scheduleAPI, { type Schedule } from '../../services/schedule';
 import factoryAPI from '../../services/factory';
+import personnelApi from '../../services/personnel';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -72,13 +73,8 @@ const SchedulePage: React.FC = () => {
   const loadEmployees = async () => {
     if (!selectedFactory) return;
     try {
-      // 使用personnel服务
-      const axios = (await import('axios')).default;
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-      const response = await axios.get(`${API_BASE_URL}/employees`, {
-        params: { factoryId: selectedFactory },
-      });
-      setEmployees(response.data?.employees || []);
+      const response = await personnelApi.getEmployees({ factoryId: selectedFactory });
+      setEmployees(response?.employees || []);
     } catch (error) {
       message.error('加载员工列表失败');
     }
