@@ -21,21 +21,23 @@ request.interceptors.request.use(
     // 从 localStorage 获取 token，但登录请求不需要携带 token
     const url = config.url;
     const isLoginRequest = url.includes('/auth/login') || url.includes('/auth/register');
-    console.log('请求拦截器 - 完整URL:', url);
-    console.log('请求拦截器 - 是否为登录/注册请求:', isLoginRequest);
     
     if (!isLoginRequest) {
       const token = localStorage.getItem('token');
-      console.log('请求拦截器 - Token 是否存在:', !!token);
-      console.log('请求拦截器 - Token 值:', token ? token.substring(0, 30) + '...' : 'null');
       
       if (token) {
         // 确保 token 不包含 "Bearer " 前缀（防止重复添加）
         const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
         config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${cleanToken}`;
+        // 强制设置 Authorization 头（确保不被覆盖）
+        config.headers['Authorization'] = `Bearer ${cleanToken}`;
+        
         // 调试日志
-        console.log('请求拦截器 - 已添加 Authorization 头:', config.headers.Authorization.substring(0, 40) + '...');
+        console.log('请求拦截器 - URL:', url);
+        console.log('请求拦截器 - Token 是否存在: true');
+        console.log('请求拦截器 - Token 值:', cleanToken.substring(0, 30) + '...');
+        console.log('请求拦截器 - 已添加 Authorization 头:', config.headers['Authorization'].substring(0, 40) + '...');
+        console.log('请求拦截器 - 完整 config.headers:', JSON.stringify(config.headers, null, 2));
       } else {
         console.warn('请求拦截器 - 未找到 token，无法添加 Authorization 头:', url);
       }
