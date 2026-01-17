@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Table, Space, Select, Modal, Form, Input, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import personnelApi from '../../services/personnel';
 
 const { Option } = Select;
 
@@ -9,61 +10,84 @@ const Personnel = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [form] = Form.useForm();
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
   
-  // Mock data initialization
+  // 部门选项
+  const departmentOptions = ['全部', '生产部', '质检部', '物流部'];
+  
+  // 从后端获取员工数据
   useEffect(() => {
-    const mockData = [
-      { 
-        id: '1', 
-        employeeId: 'EMP001', 
-        name: '张三', 
-        department: '生产部', 
-        position: '缝纫工', 
-        hireDate: '2023-05-15', 
-        salaryType: 'piece', 
-        pieceRate: 0.5, 
-        phone: '13800138001', 
-        status: 'active' 
-      },
-      { 
-        id: '2', 
-        employeeId: 'EMP002', 
-        name: '李四', 
-        department: '生产部', 
-        position: '裁剪工', 
-        hireDate: '2024-03-20', 
-        salaryType: 'piece', 
-        pieceRate: 0.8, 
-        phone: '13800138002', 
-        status: 'active' 
-      },
-      { 
-        id: '3', 
-        employeeId: 'EMP003', 
-        name: '王五', 
-        department: '质检部', 
-        position: '质检员', 
-        hireDate: '2022-10-08', 
-        salaryType: 'time', 
-        baseSalary: 6000, 
-        phone: '13800138003', 
-        status: 'active' 
-      },
-      { 
-        id: '4', 
-        employeeId: 'EMP004', 
-        name: '赵六', 
-        department: '物流部', 
-        position: '仓库管理员', 
-        hireDate: '2025-01-12', 
-        salaryType: 'fixed', 
-        baseSalary: 5500, 
-        phone: '13800138004', 
-        status: 'probation' 
-      },
-    ];
-    setEmployees(mockData);
+    const fetchEmployees = async () => {
+      try {
+        // 假设当前用户只有一个工厂，所以没有传递factoryId
+        const response = await personnelApi.getEmployees();
+        setEmployees(response.employees || []);
+      } catch (error) {
+        console.error('获取员工列表失败:', error);
+        message.error('获取员工列表失败');
+        
+        // 保留Mock数据作为备用
+        const mockData = [
+          { 
+            id: '1', 
+            employeeId: 'EMP001', 
+            name: '张三', 
+            department: '生产部', 
+            position: '缝纫工', 
+            hireDate: '2023-05-15', 
+            salaryType: 'piece', 
+            pieceRate: 0.5, 
+            phone: '13800138001', 
+            status: 'active' 
+          },
+          { 
+            id: '2', 
+            employeeId: 'EMP002', 
+            name: '李四', 
+            department: '生产部', 
+            position: '裁剪工', 
+            hireDate: '2024-03-20', 
+            salaryType: 'piece', 
+            pieceRate: 0.8, 
+            phone: '13800138002', 
+            status: 'active' 
+          },
+          { 
+            id: '3', 
+            employeeId: 'EMP003', 
+            name: '王五', 
+            department: '质检部', 
+            position: '质检员', 
+            hireDate: '2022-10-08', 
+            salaryType: 'time', 
+            baseSalary: 6000, 
+            phone: '13800138003', 
+            status: 'active' 
+          },
+          { 
+            id: '4', 
+            employeeId: 'EMP004', 
+            name: '赵六', 
+            department: '物流部', 
+            position: '仓库管理员', 
+            hireDate: '2025-01-12', 
+            salaryType: 'fixed', 
+            baseSalary: 5500, 
+            phone: '13800138004', 
+            status: 'probation' 
+          },
+        ];
+        setEmployees(mockData);
+      }
+    };
+    
+    fetchEmployees();
   }, []);
+  
+  // 过滤员工数据
+  const filteredEmployees = selectedDepartment === '全部'
+    ? employees
+    : employees.filter(e => e.department === selectedDepartment);
   
   // 处理编辑按钮
   const handleEdit = (record: any) => {
@@ -80,14 +104,15 @@ const Personnel = () => {
       okText: '确定',
       cancelText: '取消',
       okType: 'danger',
-      onOk: () => {
+      onOk: async () => {
         try {
-          // TODO: 调用后端删除 API
-          // await employeeApi.delete(record.id);
+          // 调用后端删除 API
+          await personnelApi.deleteEmployee(record.id);
           
           setEmployees(prev => prev.filter(emp => emp.id !== record.id));
           message.success('员工删除成功');
         } catch (error) {
+          console.error('删除员工失败:', error);
           message.error('操作失败，请稍后重试');
         }
       }
@@ -100,23 +125,18 @@ const Personnel = () => {
       const values = await form.validateFields();
       
       if (editingEmployee) {
-        // TODO: 调用后端更新 API
-        // await employeeApi.update(editingEmployee.id, values);
+        // 调用后端更新 API
+        const updated = await personnelApi.updateEmployee(editingEmployee.id, values);
         
         setEmployees(prev => prev.map(emp => 
-          emp.id === editingEmployee.id ? { ...emp, ...values } : emp
+          emp.id === editingEmployee.id ? { ...emp, ...updated.employee } : emp
         ));
         message.success('员工信息更新成功');
       } else {
-        // TODO: 调用后端创建 API
-        // const newEmployee = await employeeApi.create(values);
+        // 调用后端创建 API
+        const newEmployee = await personnelApi.createEmployee(values);
         
-        const newEmployee = { 
-          ...values, 
-          id: Date.now().toString(),
-          employeeId: `EMP${String(employees.length + 1).padStart(3, '0')}`
-        };
-        setEmployees(prev => [...prev, newEmployee]);
+        setEmployees(prev => [...prev, newEmployee.employee]);
         message.success('员工创建成功');
       }
       
@@ -124,6 +144,7 @@ const Personnel = () => {
       form.resetFields();
       setEditingEmployee(null);
     } catch (error) {
+      console.error('保存员工失败:', error);
       message.error('操作失败，请稍后重试');
     }
   };
@@ -154,6 +175,9 @@ const Personnel = () => {
       key: 'salaryType', 
       render: (type: string) => {
         switch(type) {
+          case 'PIECE': return '计件';
+          case 'TIME': return '计时';
+          case 'FIXED': return '固定';
           case 'piece': return '计件';
           case 'time': return '计时';
           case 'fixed': return '固定';
@@ -165,7 +189,7 @@ const Personnel = () => {
       title: '薪资标准', 
       dataIndex: ['baseSalary', 'pieceRate'], 
       key: 'salaryStandard', 
-      render: (_: any, record: any) => record.salaryType === 'piece' ? `¥${record.pieceRate}/件` : `¥${record.baseSalary}` 
+      render: (_: any, record: any) => record.salaryType === 'PIECE' || record.salaryType === 'piece' ? `¥${record.pieceRate}/件` : `¥${record.baseSalary}` 
     },
     { title: '联系电话', dataIndex: 'phone', key: 'phone' },
     { 
@@ -212,11 +236,15 @@ const Personnel = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <h1>人员管理</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Select placeholder="选择部门" style={{ width: 150 }}>
-            <Option value="all">全部部门</Option>
-            <Option value="production">生产部</Option>
-            <Option value="quality">质检部</Option>
-            <Option value="logistics">物流部</Option>
+          <Select 
+            placeholder="选择部门" 
+            style={{ width: 150 }} 
+            value={selectedDepartment}
+            onChange={setSelectedDepartment}
+          >
+            {departmentOptions.map(dep => (
+              <Option key={dep} value={dep}>{dep}</Option>
+            ))}
           </Select>
           <Button 
             type="primary" 
@@ -231,7 +259,7 @@ const Personnel = () => {
       <Card title="员工列表" variant="outlined">
         <Table 
           columns={columns} 
-          dataSource={employees} 
+          dataSource={filteredEmployees} 
           rowKey="id" 
           pagination={{ pageSize: 10 }} 
         />
@@ -249,7 +277,7 @@ const Personnel = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ status: 'active', salaryType: 'piece' }}
+          initialValues={{ status: 'active', salaryType: 'PIECE' }}
         >
           <Form.Item
             name="name"
@@ -304,9 +332,9 @@ const Personnel = () => {
             rules={[{ required: true, message: '请选择薪资类型' }]}
           >
             <Select placeholder="请选择薪资类型">
-              <Option value="piece">计件</Option>
-              <Option value="time">计时</Option>
-              <Option value="fixed">固定</Option>
+              <Option value="PIECE">计件</Option>
+              <Option value="TIME">计时</Option>
+              <Option value="FIXED">固定</Option>
             </Select>
           </Form.Item>
           
@@ -318,7 +346,7 @@ const Personnel = () => {
           >
             {({ getFieldValue }) => {
               const salaryType = getFieldValue('salaryType');
-              return salaryType === 'piece' ? (
+              return salaryType === 'PIECE' ? (
                 <Form.Item
                   name="pieceRate"
                   label="计件单价（元/件）"
