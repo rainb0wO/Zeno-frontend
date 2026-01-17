@@ -17,7 +17,7 @@ const Personnel = () => {
   
   // 从后端获取员工数据
   useEffect(() => {
-    const fetchEmployees = async () => {
+    export const fetchEmployees = async () => {
       try {
         // 假设当前用户只有一个工厂，所以没有传递factoryId
         const response = await personnelApi.getEmployees();
