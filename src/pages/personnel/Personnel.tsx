@@ -17,7 +17,7 @@ const Personnel = () => {
   
   // 从后端获取员工数据
   useEffect(() => {
-    export const fetchEmployees = async () => {
+    const fetchEmployees = async () => {
       try {
         // 假设当前用户只有一个工厂，所以没有传递factoryId
         const response = await personnelApi.getEmployees();
@@ -108,12 +108,14 @@ const Personnel = () => {
     message.error(msgMap[code] || '操作失败，请稍后重试');
   };
   
-  // 处理编辑按钮 - 统一salaryType大小写
+  // 处理编辑按钮 - 统一salaryType大小写和部门数据
   const handleEdit = (record: any) => {
     // 修复salaryType大小写不一致问题
     const fixedRecord = { 
       ...record, 
-      salaryType: String(record.salaryType).toUpperCase() 
+      salaryType: String(record.salaryType).toUpperCase(),
+      // 处理部门数据，确保表单能正确显示
+      department: typeof record.department === 'object' ? record.department.name : record.department
     };
     
     setEditingEmployee(fixedRecord);
@@ -147,28 +149,42 @@ const Personnel = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
-      // 统一处理salaryType大小写，放在if/else之前，确保新增和编辑分支都能处理
+      // 统一处理salaryType大小写和部门字段，放在if/else之前，确保新增和编辑分支都能处理
       let values = await form.validateFields();
-      values = {
+      
+      // 处理部门字段 - 兼容字符串和对象格式
+      let departmentId = values.department;
+      if (typeof values.department === 'object' && values.department !== null) {
+        // 如果是对象格式（如使用了labelInValue）
+        departmentId = values.department.key || values.department.id;
+      }
+      
+      // 构建最终提交数据
+      const submitValues = {
         ...values,
-        salaryType: String(values.salaryType).toUpperCase()
+        salaryType: String(values.salaryType).toUpperCase(),
+        departmentId,
       };
+      
+      // 移除原始department字段，避免后端接收冲突
+      delete submitValues.department;
       
       if (editingEmployee) {
         // 调用后端更新 API - 兼容不同的返回格式
-        const updated = await personnelApi.updateEmployee(editingEmployee.id, values);
-        const updatedEmployee = updated.employee || updated;
+        const updated = await personnelApi.updateEmployee(editingEmployee.id, submitValues);
+        const updatedEmployee = updated.employee ?? updated;
         
+        // 直接替换整个员工对象，确保部门更新正确显示
         setEmployees(prev => prev.map(emp => 
-          emp.id === editingEmployee.id ? { ...emp, ...updatedEmployee } : emp
+          emp.id === updatedEmployee.id ? updatedEmployee : emp
         ));
         message.success('员工信息更新成功');
       } else {
         // 调用后端创建 API - 兼容不同的返回格式
-        const newEmployeeData = await personnelApi.createEmployee(values);
-        const newEmployee = newEmployeeData.employee || newEmployeeData;
+        const created = await personnelApi.createEmployee(submitValues);
+        const createdEmp = created.employee ?? created;
         
-        setEmployees(prev => [...prev, newEmployee]);
+        setEmployees(prev => [...prev, createdEmp]);
         message.success('员工创建成功');
       }
       
