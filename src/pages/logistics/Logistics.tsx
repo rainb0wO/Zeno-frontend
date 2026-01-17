@@ -86,15 +86,7 @@ const Logistics = () => {
   // Delete logistics record
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/logistics/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete logistics record');
-      }
-      
+      await logisticsApi.deleteLogisticsRecord(id);
       message.success('物流记录删除成功');
       fetchLogisticsRecords();
       fetchLogisticsStats();
