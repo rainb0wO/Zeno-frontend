@@ -33,8 +33,6 @@ export default defineConfig({
     }),
   ],
   build: {
-    // 使用 ES2015 作为目标，兼容更多浏览器
-    target: 'es2015',
     // CSS 目标设置为 Chrome 80，确保 CSS 兼容性
     cssTarget: 'chrome80',
     minify: 'terser',

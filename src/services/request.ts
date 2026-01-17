@@ -20,10 +20,18 @@ request.interceptors.request.use(
   (config: any) => {
     // 从 localStorage 获取 token，但登录请求不需要携带 token
     const url = config.url;
-    const isLoginRequest = url.includes('/auth/login') || url.includes('/auth/register');
+    console.log('请求拦截器 - 原始 URL:', url);
+    console.log('请求拦截器 - baseURL:', config.baseURL);
+    console.log('请求拦截器 - 完整 URL:', config.baseURL + url);
+    
+    // 检查是否为登录/注册请求，使用完整URL进行判断
+    const fullUrl = config.baseURL + url;
+    const isLoginRequest = fullUrl.includes('/auth/login') || fullUrl.includes('/auth/register');
+    console.log('请求拦截器 - 是否为登录请求:', isLoginRequest);
     
     if (!isLoginRequest) {
       const token = localStorage.getItem('token');
+      console.log('请求拦截器 - Token 是否存在:', !!token);
       
       if (token) {
         // 确保 token 不包含 "Bearer " 前缀（防止重复添加）
@@ -34,7 +42,6 @@ request.interceptors.request.use(
         
         // 调试日志
         console.log('请求拦截器 - URL:', url);
-        console.log('请求拦截器 - Token 是否存在: true');
         console.log('请求拦截器 - Token 值:', cleanToken.substring(0, 30) + '...');
         console.log('请求拦截器 - 已添加 Authorization 头:', config.headers['Authorization'].substring(0, 40) + '...');
         console.log('请求拦截器 - 完整 config.headers:', JSON.stringify(config.headers, null, 2));
