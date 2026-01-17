@@ -116,7 +116,7 @@ const Personnel = () => {
       salaryType: String(record.salaryType).toUpperCase() 
     };
     
-    setEditingEmployee(record);
+    setEditingEmployee(fixedRecord);
     form.setFieldsValue(fixedRecord);
     setIsModalVisible(true);
   };
