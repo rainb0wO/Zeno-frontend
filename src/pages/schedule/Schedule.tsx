@@ -73,7 +73,10 @@ const SchedulePage: React.FC = () => {
   const loadEmployees = async () => {
     if (!selectedFactory) return;
     try {
-      const response = await personnelApi.getEmployees({ factoryId: selectedFactory });
+      const response = await personnelApi.getEmployees({
+        factoryId: selectedFactory,
+        departmentId: selectedDepartment
+      });
       setEmployees(response?.employees || []);
     } catch (error) {
       message.error('加载员工列表失败');
