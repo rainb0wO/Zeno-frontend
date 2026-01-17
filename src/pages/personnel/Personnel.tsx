@@ -87,6 +87,7 @@ const Personnel = () => {
   }, []);
   
   // 过滤员工数据 - 使用useMemo缓存，提高性能
+  // 注意：如果将来departmentOptions动态变更，需补充为依赖项
   const filteredEmployees = useMemo(() => {
     if (selectedDepartment === '全部') return employees;
     
@@ -94,7 +95,18 @@ const Personnel = () => {
       const empDepartment = typeof e.department === 'object' ? e.department.name : e.department;
       return empDepartment === selectedDepartment;
     });
-  }, [employees, selectedDepartment]);
+  }, [employees, selectedDepartment /*, departmentOptions*/]);
+  
+  // 封装API错误处理函数，提高代码可读性和可维护性
+  const showApiError = (error: any) => {
+    const code = error.response?.status;
+    const msgMap: Record<number, string> = {
+      400: '输入数据无效，请检查后重试',
+      403: '无权限执行此操作',
+      404: '员工不存在',
+    };
+    message.error(msgMap[code] || '操作失败，请稍后重试');
+  };
   
   // 处理编辑按钮 - 统一salaryType大小写
   const handleEdit = (record: any) => {
@@ -126,14 +138,7 @@ const Personnel = () => {
           message.success('员工删除成功');
         } catch (error: any) {
           console.error('删除员工失败:', error);
-          // 更友好的错误提示
-          if (error.response?.status === 403) {
-            message.error('无权限执行此操作');
-          } else if (error.response?.status === 404) {
-            message.error('员工不存在');
-          } else {
-            message.error('操作失败，请稍后重试');
-          }
+          showApiError(error);
         }
       }
     });
@@ -142,9 +147,8 @@ const Personnel = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
+      // 统一处理salaryType大小写，放在if/else之前，确保新增和编辑分支都能处理
       let values = await form.validateFields();
-      
-      // 预处理salaryType，确保保存的数据保持一致
       values = {
         ...values,
         salaryType: String(values.salaryType).toUpperCase()
@@ -173,14 +177,7 @@ const Personnel = () => {
       setEditingEmployee(null);
     } catch (error: any) {
       console.error('保存员工失败:', error);
-      // 更友好的错误提示
-      if (error.response?.status === 400) {
-        message.error('输入数据无效，请检查后重试');
-      } else if (error.response?.status === 403) {
-        message.error('无权限执行此操作');
-      } else {
-        message.error('操作失败，请稍后重试');
-      }
+      showApiError(error);
     }
   };
   
