@@ -1,13 +1,43 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/zeno-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- 视口配置 - 支持所有移动设备 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <!-- IE 兼容性 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    
+    <!-- Apple iOS 优化 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Zeno" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- Android Chrome 优化 -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#242424" />
+    
+    <!-- 格式检测 -->
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+    
+    <!-- 搜索引擎优化 -->
+    <meta name="description" content="Zeno 生产辅助管理平台" />
+    <meta name="keywords" content="Zeno, 生产管理, 辅助平台" />
+    
+    <!-- 浏览器兼容性提示 -->
+    <!--[if lt IE 9]>
+      <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+    <![endif]-->
+    
     <title>Zeno 生产辅助管理平台</title>
   </head>
   <body>
     <div id="root"></div>
+    <!-- 使用 nomodule 属性为不支持 ES modules 的浏览器提供降级方案 -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
