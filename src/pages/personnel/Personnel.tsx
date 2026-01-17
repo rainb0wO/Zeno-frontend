@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Table, Space, Select, Modal, Form, Input, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
@@ -22,11 +22,11 @@ const Personnel = () => {
         // 假设当前用户只有一个工厂，所以没有传递factoryId
         const response = await personnelApi.getEmployees();
         setEmployees(response.employees || response || []);
-      } catch (error) {
+      } catch (error: any) {
         console.error('获取员工列表失败:', error);
         message.error('获取员工列表失败');
         
-        // 保留Mock数据作为备用（仅开发环境使用）
+        // 仅在开发环境保留Mock数据，且确保先await接口失败再注入
         if (import.meta.env.DEV) {
           const mockData = [
             { 
@@ -86,13 +86,15 @@ const Personnel = () => {
     fetchEmployees();
   }, []);
   
-  // 过滤员工数据 - 兼容department为对象或字符串的情况
-  const filteredEmployees = selectedDepartment === '全部'
-    ? employees
-    : employees.filter(e => {
-        const empDepartment = typeof e.department === 'object' ? e.department.name : e.department;
-        return empDepartment === selectedDepartment;
-      });
+  // 过滤员工数据 - 使用useMemo缓存，提高性能
+  const filteredEmployees = useMemo(() => {
+    if (selectedDepartment === '全部') return employees;
+    
+    return employees.filter(e => {
+      const empDepartment = typeof e.department === 'object' ? e.department.name : e.department;
+      return empDepartment === selectedDepartment;
+    });
+  }, [employees, selectedDepartment]);
   
   // 处理编辑按钮 - 统一salaryType大小写
   const handleEdit = (record: any) => {
@@ -122,9 +124,16 @@ const Personnel = () => {
           
           setEmployees(prev => prev.filter(emp => emp.id !== record.id));
           message.success('员工删除成功');
-        } catch (error) {
+        } catch (error: any) {
           console.error('删除员工失败:', error);
-          message.error('操作失败，请稍后重试');
+          // 更友好的错误提示
+          if (error.response?.status === 403) {
+            message.error('无权限执行此操作');
+          } else if (error.response?.status === 404) {
+            message.error('员工不存在');
+          } else {
+            message.error('操作失败，请稍后重试');
+          }
         }
       }
     });
@@ -133,7 +142,13 @@ const Personnel = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
-      const values = await form.validateFields();
+      let values = await form.validateFields();
+      
+      // 预处理salaryType，确保保存的数据保持一致
+      values = {
+        ...values,
+        salaryType: String(values.salaryType).toUpperCase()
+      };
       
       if (editingEmployee) {
         // 调用后端更新 API - 兼容不同的返回格式
@@ -156,9 +171,16 @@ const Personnel = () => {
       setIsModalVisible(false);
       form.resetFields();
       setEditingEmployee(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('保存员工失败:', error);
-      message.error('操作失败，请稍后重试');
+      // 更友好的错误提示
+      if (error.response?.status === 400) {
+        message.error('输入数据无效，请检查后重试');
+      } else if (error.response?.status === 403) {
+        message.error('无权限执行此操作');
+      } else {
+        message.error('操作失败，请稍后重试');
+      }
     }
   };
   
@@ -206,12 +228,13 @@ const Personnel = () => {
       key: 'salaryStandard', 
       render: (_: any, record: any) => {
         const salaryType = String(record.salaryType).toUpperCase();
-        if (salaryType.match(/PIECE/i)) {
-          return `¥${record.pieceRate}/件`;
-        } else if (salaryType.match(/TIME/i)) {
-          return `¥${record.baseSalary}/时`;
-        } else {
-          return `¥${record.baseSalary}`;
+        switch (salaryType) {
+          case 'PIECE':
+            return `¥${record.pieceRate}/件`;
+          case 'TIME':
+            return `¥${record.baseSalary}/时`;
+          default:
+            return `¥${record.baseSalary}`;
         }
       }
     },
