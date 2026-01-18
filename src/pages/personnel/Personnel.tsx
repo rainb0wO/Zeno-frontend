@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Table, Space, Select, Modal, Form, Input, message } from 'antd';
+import { Card, Button, Table, Space, Select, Modal, Form, Input, message, DatePicker } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import personnelApi from '../../services/personnel';
 
 const { Option } = Select;
@@ -11,9 +12,30 @@ const Personnel = () => {
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [form] = Form.useForm();
   const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
+  // 新增：部门列表
+  const [departments, setDepartments] = useState<any[]>([]);
   
-  // 部门选项
-  const departmentOptions = ['全部', '生产部', '质检部', '物流部'];
+  // 从后端获取部门列表
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await personnelApi.getDepartments();
+        setDepartments(response.departments || []);
+      } catch (error: any) {
+        console.error('获取部门列表失败:', error);
+        // 仅在开发环境使用默认部门数据
+        if (import.meta.env.DEV) {
+          setDepartments([
+            { id: '1', name: '生产部', factoryId: '1', createdAt: '', updatedAt: '' },
+            { id: '2', name: '质检部', factoryId: '1', createdAt: '', updatedAt: '' },
+            { id: '3', name: '物流部', factoryId: '1', createdAt: '', updatedAt: '' },
+          ]);
+        }
+      }
+    };
+    
+    fetchDepartments();
+  }, []);
   
   // 从后端获取员工数据
   useEffect(() => {
@@ -33,7 +55,7 @@ const Personnel = () => {
               id: '1', 
               employeeId: 'EMP001', 
               name: '张三', 
-              department: '生产部', 
+              departmentId: '1',
               position: '缝纫工', 
               hireDate: '2023-05-15', 
               salaryType: 'PIECE', 
@@ -45,7 +67,7 @@ const Personnel = () => {
               id: '2', 
               employeeId: 'EMP002', 
               name: '李四', 
-              department: '生产部', 
+              departmentId: '1',
               position: '裁剪工', 
               hireDate: '2024-03-20', 
               salaryType: 'PIECE', 
@@ -57,7 +79,7 @@ const Personnel = () => {
               id: '3', 
               employeeId: 'EMP003', 
               name: '王五', 
-              department: '质检部', 
+              departmentId: '2',
               position: '质检员', 
               hireDate: '2022-10-08', 
               salaryType: 'TIME', 
@@ -69,7 +91,7 @@ const Personnel = () => {
               id: '4', 
               employeeId: 'EMP004', 
               name: '赵六', 
-              department: '物流部', 
+              departmentId: '3',
               position: '仓库管理员', 
               hireDate: '2025-01-12', 
               salaryType: 'FIXED', 
@@ -87,15 +109,14 @@ const Personnel = () => {
   }, []);
   
   // 过滤员工数据 - 使用useMemo缓存，提高性能
-  // 注意：如果将来departmentOptions动态变更，需补充为依赖项
   const filteredEmployees = useMemo(() => {
     if (selectedDepartment === '全部') return employees;
     
     return employees.filter(e => {
-      const empDepartment = typeof e.department === 'object' ? e.department.name : e.department;
-      return empDepartment === selectedDepartment;
+      // 使用departmentId进行过滤
+      return e.departmentId === selectedDepartment;
     });
-  }, [employees, selectedDepartment /*, departmentOptions*/]);
+  }, [employees, selectedDepartment]);
   
   // 封装API错误处理函数，提高代码可读性和可维护性
   const showApiError = (error: any) => {
@@ -114,8 +135,10 @@ const Personnel = () => {
     const fixedRecord = { 
       ...record, 
       salaryType: String(record.salaryType).toUpperCase(),
-      // 处理部门数据，确保表单能正确显示
-      department: typeof record.department === 'object' ? record.department.name : record.department
+      // 处理部门数据，直接使用departmentId
+      department: record.departmentId,
+      // 处理日期数据，转换为dayjs对象
+      hireDate: dayjs(record.hireDate)
     };
     
     setEditingEmployee(fixedRecord);
@@ -149,28 +172,37 @@ const Personnel = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
-      // 统一处理salaryType大小写和部门字段，放在if/else之前，确保新增和编辑分支都能处理
+      // 统一处理表单数据
       let values = await form.validateFields();
       
-      // 处理部门字段 - 兼容字符串和对象格式
-      let departmentId = values.department;
-      if (typeof values.department === 'object' && values.department !== null) {
-        // 如果是对象格式（如使用了labelInValue）
-        departmentId = values.department.key || values.department.id;
+      // 生成employeeId（如果没有）
+      let employeeId = values.employeeId;
+      if (!employeeId) {
+        // 生成规则：EMP + 时间戳后6位
+        employeeId = 'EMP' + Date.now().toString().slice(-6);
       }
+      
+      // 处理部门字段 - 使用departmentId
+      const departmentId = values.department;
+      
+      // 处理日期字段 - 转换为YYYY-MM-DD格式
+      const hireDate = values.hireDate.format('YYYY-MM-DD');
       
       // 构建最终提交数据
       const submitValues = {
         ...values,
+        employeeId,
         salaryType: String(values.salaryType).toUpperCase(),
         departmentId,
+        hireDate,
       };
       
-      // 移除原始department字段，避免后端接收冲突
+      // 移除多余字段
       delete submitValues.department;
+      delete submitValues.hireDate;
       
       if (editingEmployee) {
-        // 调用后端更新 API - 兼容不同的返回格式
+        // 调用后端更新 API
         const updated = await personnelApi.updateEmployee(editingEmployee.id, submitValues);
         const updatedEmployee = updated.employee ?? updated;
         
@@ -180,7 +212,7 @@ const Personnel = () => {
         ));
         message.success('员工信息更新成功');
       } else {
-        // 调用后端创建 API - 兼容不同的返回格式
+        // 调用后端创建 API
         const created = await personnelApi.createEmployee(submitValues);
         const createdEmp = created.employee ?? created;
         
@@ -216,9 +248,12 @@ const Personnel = () => {
     { title: '姓名', dataIndex: 'name', key: 'name', render: (name: string) => <Space><UserOutlined />{name}</Space> },
     { 
       title: '部门', 
-      dataIndex: 'department', 
+      dataIndex: 'departmentId', 
       key: 'department',
-      render: (dep: any) => typeof dep === 'object' ? dep.name : dep
+      render: (depId: string) => {
+        const dept = departments.find(d => d.id === depId);
+        return dept?.name || '-';
+      }
     },
     { title: '职位', dataIndex: 'position', key: 'position' },
     { title: '入职日期', dataIndex: 'hireDate', key: 'hireDate' },
@@ -302,8 +337,9 @@ const Personnel = () => {
             value={selectedDepartment}
             onChange={setSelectedDepartment}
           >
-            {departmentOptions.map(dep => (
-              <Option key={dep} value={dep}>{dep}</Option>
+            <Option key="全部" value="全部">全部</Option>
+            {departments.map(dep => (
+              <Option key={dep.id} value={dep.id}>{dep.name}</Option>
             ))}
           </Select>
           <Button 
@@ -354,9 +390,9 @@ const Personnel = () => {
             rules={[{ required: true, message: '请选择部门' }]}
           >
             <Select placeholder="请选择部门">
-              <Option value="生产部">生产部</Option>
-              <Option value="质检部">质检部</Option>
-              <Option value="物流部">物流部</Option>
+              {departments.map(dep => (
+                <Option key={dep.id} value={dep.id}>{dep.name}</Option>
+              ))}
             </Select>
           </Form.Item>
           
@@ -382,9 +418,9 @@ const Personnel = () => {
           <Form.Item
             name="hireDate"
             label="入职日期"
-            rules={[{ required: true, message: '请输入入职日期' }]}
+            rules={[{ required: true, message: '请选择入职日期' }]}
           >
-            <Input type="date" />
+            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           
           <Form.Item
