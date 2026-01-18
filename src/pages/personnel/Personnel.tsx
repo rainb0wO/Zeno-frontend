@@ -1,17 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { Card, Button, Table, Space, Select, Modal, Form, Input, message, DatePicker } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { Card, Button, Table, Space, Select, Modal, Form, Input, message, DatePicker, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
 
 const { Option } = Select;
 
 const Personnel = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<any[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [form] = Form.useForm();
   const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
+  const [loading, setLoading] = useState<boolean>(false);
   // 新增：部门列表
   const [departments, setDepartments] = useState<any[]>([]);
   
@@ -20,6 +23,11 @@ const Personnel = () => {
     () => Object.fromEntries(departments.map(d => [d.id, d.name])),
     [departments]
   );
+  
+  // 开发环境全局调试
+  if (import.meta.env.DEV) {
+    (window as any).__EMP_LIST__ = employees;
+  }
   
   // 从后端获取部门列表
   useEffect(() => {
@@ -45,68 +53,80 @@ const Personnel = () => {
   
   // 从后端获取员工数据
   const fetchEmployees = async () => {
+    setLoading(true);
     try {
       // 假设当前用户只有一个工厂，所以没有传递factoryId
       const response = await personnelApi.getEmployees();
       setEmployees(response.employees || response || []);
+      return true; // 成功标记
     } catch (error: any) {
       console.error('获取员工列表失败:', error);
-      message.error('获取员工列表失败');
       
-      // 仅在开发环境保留Mock数据，且确保先await接口失败再注入
-      if (import.meta.env.DEV) {
-        const mockData = [
-          { 
-            id: '1', 
-            employeeId: 'EMP001', 
-            name: '张三', 
-            departmentId: '1',
-            position: '缝纫工', 
-            hireDate: '2023-05-15', 
-            salaryType: 'PIECE', 
-            pieceRate: 0.5, 
-            phone: '13800138001', 
-            status: 'active' 
-          },
-          { 
-            id: '2', 
-            employeeId: 'EMP002', 
-            name: '李四', 
-            departmentId: '1',
-            position: '裁剪工', 
-            hireDate: '2024-03-20', 
-            salaryType: 'PIECE', 
-            pieceRate: 0.8, 
-            phone: '13800138002', 
-            status: 'active' 
-          },
-          { 
-            id: '3', 
-            employeeId: 'EMP003', 
-            name: '王五', 
-            departmentId: '2',
-            position: '质检员', 
-            hireDate: '2022-10-08', 
-            salaryType: 'TIME', 
-            baseSalary: 6000, 
-            phone: '13800138003', 
-            status: 'active' 
-          },
-          { 
-            id: '4', 
-            employeeId: 'EMP004', 
-            name: '赵六', 
-            departmentId: '3',
-            position: '仓库管理员', 
-            hireDate: '2025-01-12', 
-            salaryType: 'FIXED', 
-            baseSalary: 5500, 
-            phone: '13800138004', 
-            status: 'probation' 
-          },
-        ];
-        setEmployees(mockData);
+      if (error.response?.status === 401) {
+        message.error('登录已过期，请重新登录');
+        navigate('/login');
+      } else {
+        message.error('获取员工列表失败');
+        
+        // 仅在开发环境保留Mock数据，且确保先await接口失败再注入
+        if (import.meta.env.DEV) {
+          const mockData = [
+            { 
+              id: '1', 
+              employeeId: 'EMP001', 
+              name: '张三', 
+              departmentId: '1',
+              position: '缝纫工', 
+              hireDate: '2023-05-15', 
+              salaryType: 'PIECE', 
+              pieceRate: 0.5, 
+              phone: '13800138001', 
+              status: 'active' 
+            },
+            { 
+              id: '2', 
+              employeeId: 'EMP002', 
+              name: '李四', 
+              departmentId: '1',
+              position: '裁剪工', 
+              hireDate: '2024-03-20', 
+              salaryType: 'PIECE', 
+              pieceRate: 0.8, 
+              phone: '13800138002', 
+              status: 'active' 
+            },
+            { 
+              id: '3', 
+              employeeId: 'EMP003', 
+              name: '王五', 
+              departmentId: '2',
+              position: '质检员', 
+              hireDate: '2022-10-08', 
+              salaryType: 'TIME', 
+              baseSalary: 6000, 
+              phone: '13800138003', 
+              status: 'active' 
+            },
+            { 
+              id: '4', 
+              employeeId: 'EMP004', 
+              name: '赵六', 
+              departmentId: '3',
+              position: '仓库管理员', 
+              hireDate: '2025-01-12', 
+              salaryType: 'FIXED', 
+              baseSalary: 5500, 
+              phone: '13800138004', 
+              status: 'probation' 
+            },
+          ];
+          setEmployees(mockData);
+          return true; // Mock数据也算成功
+        }
       }
+      return false; // 失败标记
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -207,15 +227,19 @@ const Personnel = () => {
         await personnelApi.updateEmployee(editingEmployee.id, submitValues);
         
         // 刷新员工列表，确保与后端一致
-        await fetchEmployees();
-        message.success('员工信息更新成功');
+        const ok = await fetchEmployees();
+        if (ok) {
+          message.success('员工信息更新成功');
+        }
       } else {
         // 调用后端创建 API
         await personnelApi.createEmployee(submitValues);
         
         // 刷新员工列表，确保与后端一致
-        await fetchEmployees();
-        message.success('员工创建成功');
+        const ok = await fetchEmployees();
+        if (ok) {
+          message.success('员工创建成功');
+        }
       }
       
       setIsModalVisible(false);
@@ -349,12 +373,14 @@ const Personnel = () => {
       
       {/* 移除variant="outlined"属性，兼容Ant Design v4 */}
       <Card title="员工列表">
-        <Table 
-          columns={columns} 
-          dataSource={filteredEmployees} 
-          rowKey="id" 
-          pagination={{ pageSize: 10 }} 
-        />
+        <Spin spinning={loading}>
+          <Table 
+            columns={columns} 
+            dataSource={filteredEmployees} 
+            rowKey="id" 
+            pagination={{ pageSize: 10 }} 
+          />
+        </Spin>
       </Card>
       
       <Modal
