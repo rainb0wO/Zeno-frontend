@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import dayjs from 'dayjs';
 import { Card, Button, Table, Space, Select, Modal, Form, Input, message, DatePicker } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import personnelApi from '../../services/personnel';
 
 const { Option } = Select;
@@ -14,6 +14,12 @@ const Personnel = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
   // 新增：部门列表
   const [departments, setDepartments] = useState<any[]>([]);
+  
+  // 部门ID到名称的映射，使用useMemo缓存
+  const depNameById = useMemo(
+    () => Object.fromEntries(departments.map(d => [d.id, d.name])),
+    [departments]
+  );
   
   // 从后端获取部门列表
   useEffect(() => {
@@ -135,8 +141,8 @@ const Personnel = () => {
     const fixedRecord = { 
       ...record, 
       salaryType: String(record.salaryType).toUpperCase(),
-      // 处理部门数据，直接使用departmentId
-      department: record.departmentId,
+      // 直接使用departmentId字段
+      departmentId: record.departmentId,
       // 处理日期数据，转换为dayjs对象
       hireDate: dayjs(record.hireDate)
     };
@@ -182,9 +188,6 @@ const Personnel = () => {
         employeeId = 'EMP' + Date.now().toString().slice(-6);
       }
       
-      // 处理部门字段 - 使用departmentId
-      const departmentId = values.department;
-      
       // 处理日期字段 - 转换为YYYY-MM-DD格式
       const hireDate = values.hireDate.format('YYYY-MM-DD');
       
@@ -193,12 +196,10 @@ const Personnel = () => {
         ...values,
         employeeId,
         salaryType: String(values.salaryType).toUpperCase(),
-        departmentId,
         hireDate,
       };
       
       // 移除多余字段
-      delete submitValues.department;
       delete submitValues.hireDate;
       
       if (editingEmployee) {
@@ -250,10 +251,7 @@ const Personnel = () => {
       title: '部门', 
       dataIndex: 'departmentId', 
       key: 'department',
-      render: (depId: string) => {
-        const dept = departments.find(d => d.id === depId);
-        return dept?.name || '-';
-      }
+      render: (depId: string) => depNameById[depId] || '-' 
     },
     { title: '职位', dataIndex: 'position', key: 'position' },
     { title: '入职日期', dataIndex: 'hireDate', key: 'hireDate' },
@@ -385,7 +383,7 @@ const Personnel = () => {
           </Form.Item>
           
           <Form.Item
-            name="department"
+            name="departmentId"
             label="部门"
             rules={[{ required: true, message: '请选择部门' }]}
           >
