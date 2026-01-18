@@ -44,73 +44,73 @@ const Personnel = () => {
   }, []);
   
   // 从后端获取员工数据
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        // 假设当前用户只有一个工厂，所以没有传递factoryId
-        const response = await personnelApi.getEmployees();
-        setEmployees(response.employees || response || []);
-      } catch (error: any) {
-        console.error('获取员工列表失败:', error);
-        message.error('获取员工列表失败');
-        
-        // 仅在开发环境保留Mock数据，且确保先await接口失败再注入
-        if (import.meta.env.DEV) {
-          const mockData = [
-            { 
-              id: '1', 
-              employeeId: 'EMP001', 
-              name: '张三', 
-              departmentId: '1',
-              position: '缝纫工', 
-              hireDate: '2023-05-15', 
-              salaryType: 'PIECE', 
-              pieceRate: 0.5, 
-              phone: '13800138001', 
-              status: 'active' 
-            },
-            { 
-              id: '2', 
-              employeeId: 'EMP002', 
-              name: '李四', 
-              departmentId: '1',
-              position: '裁剪工', 
-              hireDate: '2024-03-20', 
-              salaryType: 'PIECE', 
-              pieceRate: 0.8, 
-              phone: '13800138002', 
-              status: 'active' 
-            },
-            { 
-              id: '3', 
-              employeeId: 'EMP003', 
-              name: '王五', 
-              departmentId: '2',
-              position: '质检员', 
-              hireDate: '2022-10-08', 
-              salaryType: 'TIME', 
-              baseSalary: 6000, 
-              phone: '13800138003', 
-              status: 'active' 
-            },
-            { 
-              id: '4', 
-              employeeId: 'EMP004', 
-              name: '赵六', 
-              departmentId: '3',
-              position: '仓库管理员', 
-              hireDate: '2025-01-12', 
-              salaryType: 'FIXED', 
-              baseSalary: 5500, 
-              phone: '13800138004', 
-              status: 'probation' 
-            },
-          ];
-          setEmployees(mockData);
-        }
+  const fetchEmployees = async () => {
+    try {
+      // 假设当前用户只有一个工厂，所以没有传递factoryId
+      const response = await personnelApi.getEmployees();
+      setEmployees(response.employees || response || []);
+    } catch (error: any) {
+      console.error('获取员工列表失败:', error);
+      message.error('获取员工列表失败');
+      
+      // 仅在开发环境保留Mock数据，且确保先await接口失败再注入
+      if (import.meta.env.DEV) {
+        const mockData = [
+          { 
+            id: '1', 
+            employeeId: 'EMP001', 
+            name: '张三', 
+            departmentId: '1',
+            position: '缝纫工', 
+            hireDate: '2023-05-15', 
+            salaryType: 'PIECE', 
+            pieceRate: 0.5, 
+            phone: '13800138001', 
+            status: 'active' 
+          },
+          { 
+            id: '2', 
+            employeeId: 'EMP002', 
+            name: '李四', 
+            departmentId: '1',
+            position: '裁剪工', 
+            hireDate: '2024-03-20', 
+            salaryType: 'PIECE', 
+            pieceRate: 0.8, 
+            phone: '13800138002', 
+            status: 'active' 
+          },
+          { 
+            id: '3', 
+            employeeId: 'EMP003', 
+            name: '王五', 
+            departmentId: '2',
+            position: '质检员', 
+            hireDate: '2022-10-08', 
+            salaryType: 'TIME', 
+            baseSalary: 6000, 
+            phone: '13800138003', 
+            status: 'active' 
+          },
+          { 
+            id: '4', 
+            employeeId: 'EMP004', 
+            name: '赵六', 
+            departmentId: '3',
+            position: '仓库管理员', 
+            hireDate: '2025-01-12', 
+            salaryType: 'FIXED', 
+            baseSalary: 5500, 
+            phone: '13800138004', 
+            status: 'probation' 
+          },
+        ];
+        setEmployees(mockData);
       }
-    };
-    
+    }
+  };
+  
+  useEffect(() => {
     fetchEmployees();
   }, []);
   
@@ -204,20 +204,17 @@ const Personnel = () => {
       
       if (editingEmployee) {
         // 调用后端更新 API
-        const updated = await personnelApi.updateEmployee(editingEmployee.id, submitValues);
-        const updatedEmployee = updated.employee ?? updated;
+        await personnelApi.updateEmployee(editingEmployee.id, submitValues);
         
-        // 直接替换整个员工对象，确保部门更新正确显示
-        setEmployees(prev => prev.map(emp => 
-          emp.id === updatedEmployee.id ? updatedEmployee : emp
-        ));
+        // 刷新员工列表，确保与后端一致
+        await fetchEmployees();
         message.success('员工信息更新成功');
       } else {
         // 调用后端创建 API
-        const created = await personnelApi.createEmployee(submitValues);
-        const createdEmp = created.employee ?? created;
+        await personnelApi.createEmployee(submitValues);
         
-        setEmployees(prev => [...prev, createdEmp]);
+        // 刷新员工列表，确保与后端一致
+        await fetchEmployees();
         message.success('员工创建成功');
       }
       
@@ -290,10 +287,10 @@ const Personnel = () => {
       dataIndex: 'status', 
       key: 'status', 
       render: (status: string) => {
-        switch(status) {
-          case 'active': return <span style={{ color: '#3f8600' }}>在职</span>;
-          case 'probation': return <span style={{ color: '#1890ff' }}>试用期</span>;
-          case 'inactive': return <span style={{ color: '#cf1322' }}>离职</span>;
+        switch(status.toUpperCase()) {
+          case 'ACTIVE': return <span style={{ color: '#3f8600' }}>在职</span>;
+          case 'PROBATION': return <span style={{ color: '#1890ff' }}>试用期</span>;
+          case 'INACTIVE': return <span style={{ color: '#cf1322' }}>离职</span>;
           default: return status;
         }
       }
