@@ -224,22 +224,36 @@ const Personnel = () => {
       
       if (editingEmployee) {
         // 调用后端更新 API
-        await personnelApi.updateEmployee(editingEmployee.id, submitValues);
+        const res = await personnelApi.updateEmployee(editingEmployee.id, submitValues);
         
-        // 刷新员工列表，确保与后端一致
-        const ok = await fetchEmployees();
-        if (ok) {
-          message.success('员工信息更新成功');
-        }
+        // 后端返回的 employee 可能缺字段 → 用提交值补齐
+        const updatedEmp = {
+          ...res.employee,
+          departmentId: submitValues.departmentId,
+          status: submitValues.status,
+        };
+        
+        // 直接更新本地状态，确保表格立即显示最新值
+        setEmployees(prev =>
+          prev.map(e => (e.id === updatedEmp.id ? updatedEmp : e))
+        );
+        
+        message.success('员工信息更新成功');
       } else {
         // 调用后端创建 API
-        await personnelApi.createEmployee(submitValues);
+        const res = await personnelApi.createEmployee(submitValues);
         
-        // 刷新员工列表，确保与后端一致
-        const ok = await fetchEmployees();
-        if (ok) {
-          message.success('员工创建成功');
-        }
+        // 后端返回的 employee 可能缺字段 → 用提交值补齐
+        const createdEmp = {
+          ...res.employee,
+          departmentId: submitValues.departmentId,
+          status: submitValues.status,
+        };
+        
+        // 直接更新本地状态，确保表格立即显示最新值
+        setEmployees(prev => [...prev, createdEmp]);
+        
+        message.success('员工创建成功');
       }
       
       setIsModalVisible(false);
