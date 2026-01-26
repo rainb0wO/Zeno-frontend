@@ -13,8 +13,12 @@ const Personnel = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [form] = Form.useForm();
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
+
   const [loading, setLoading] = useState<boolean>(false);
+  // 部门筛选
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
+  // 搜索关键词
+  const [searchText, setSearchText] = useState<string>('');
   // 新增：部门列表
   const [departments, setDepartments] = useState<any[]>([]);
   
@@ -136,13 +140,21 @@ const Personnel = () => {
   
   // 过滤员工数据 - 使用useMemo缓存，提高性能
   const filteredEmployees = useMemo(() => {
-    if (selectedDepartment === '全部') return employees;
-    
-    return employees.filter(e => {
-      // 使用departmentId进行过滤
-      return e.departmentId === selectedDepartment;
-    });
-  }, [employees, selectedDepartment]);
+    let data = employees;
+    // 部门过滤
+    if (selectedDepartment !== '全部') {
+      data = data.filter(e => e.departmentId === selectedDepartment);
+    }
+    // 关键字搜索
+    if (searchText.trim()) {
+      const kw = searchText.trim().toLowerCase();
+      data = data.filter(e =>
+        String(e.employeeId).toLowerCase().includes(kw) ||
+        String(e.name).toLowerCase().includes(kw)
+      );
+    }
+    return data;
+  }, [employees, selectedDepartment, searchText]);
   
   // 封装API错误处理函数，提高代码可读性和可维护性
   const showApiError = (error: any) => {
@@ -201,59 +213,40 @@ const Personnel = () => {
       // 统一处理表单数据
       let values = await form.validateFields();
       
-      // 生成employeeId（如果没有）
-      let employeeId = values.employeeId;
-      if (!employeeId) {
-        // 生成规则：EMP + 时间戳后6位
-        employeeId = 'EMP' + Date.now().toString().slice(-6);
-      }
-      
       // 处理日期字段 - 转换为YYYY-MM-DD格式
       const hireDate = values.hireDate.format('YYYY-MM-DD');
-      
-      // 构建最终提交数据
-      const submitValues = {
+
+      // 构建最终提交数据（2+A：employeeId 由后端生成，前端不生成也不提交）
+      const submitValues: any = {
         ...values,
-        employeeId,
         salaryType: String(values.salaryType).toUpperCase(),
+        status: String(values.status).toUpperCase(),
         hireDate,
       };
-      
+
       // 移除多余字段
-      delete submitValues.hireDate;
+      delete submitValues.employeeId;
       
       if (editingEmployee) {
+        // 更新时不应提交入职日期
+        delete submitValues.hireDate;
         // 调用后端更新 API
-        const res = await personnelApi.updateEmployee(editingEmployee.id, submitValues);
-        
-        // 后端返回的 employee 可能缺字段 → 用提交值补齐
-        const updatedEmp = {
-          ...res.employee,
-          departmentId: submitValues.departmentId,
-          status: submitValues.status,
-        };
-        
-        // 直接更新本地状态，确保表格立即显示最新值
-        setEmployees(prev =>
-          prev.map(e => (e.id === updatedEmp.id ? updatedEmp : e))
-        );
-        
-        message.success('员工信息更新成功');
+        await personnelApi.updateEmployee(editingEmployee.id, submitValues);
+
+        // 统一以重新拉取列表为准，保证与后端一致
+        const ok = await fetchEmployees();
+        if (ok) {
+          message.success('员工信息更新成功');
+        }
       } else {
         // 调用后端创建 API
-        const res = await personnelApi.createEmployee(submitValues);
-        
-        // 后端返回的 employee 可能缺字段 → 用提交值补齐
-        const createdEmp = {
-          ...res.employee,
-          departmentId: submitValues.departmentId,
-          status: submitValues.status,
-        };
-        
-        // 直接更新本地状态，确保表格立即显示最新值
-        setEmployees(prev => [...prev, createdEmp]);
-        
-        message.success('员工创建成功');
+        await personnelApi.createEmployee(submitValues);
+
+        // 统一以重新拉取列表为准，保证与后端一致
+        const ok = await fetchEmployees();
+        if (ok) {
+          message.success('员工创建成功');
+        }
       }
       
       setIsModalVisible(false);
@@ -282,73 +275,23 @@ const Personnel = () => {
   const columns = [
     { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId' },
     { title: '姓名', dataIndex: 'name', key: 'name', render: (name: string) => <Space><UserOutlined />{name}</Space> },
-    { 
-      title: '部门', 
-      dataIndex: 'departmentId', 
-      key: 'department',
-      render: (depId: string) => depNameById[depId] || '-' 
-    },
-    { title: '职位', dataIndex: 'position', key: 'position' },
-    { title: '入职日期', dataIndex: 'hireDate', key: 'hireDate' },
-    { 
-      title: '薪资类型', 
-      dataIndex: 'salaryType', 
-      key: 'salaryType', 
-      render: (type: string) => {
-        switch(type.toUpperCase()) {
-          case 'PIECE': return '计件';
-          case 'TIME': return '计时';
-          case 'FIXED': return '固定';
-          default: return type;
-        }
-      }
-    },
-    { 
-      title: '薪资标准', 
-      dataIndex: ['baseSalary', 'pieceRate'], 
-      key: 'salaryStandard', 
-      render: (_: any, record: any) => {
-        const salaryType = String(record.salaryType).toUpperCase();
-        switch (salaryType) {
-          case 'PIECE':
-            return `¥${record.pieceRate}/件`;
-          case 'TIME':
-            return `¥${record.baseSalary}/时`;
-          default:
-            return `¥${record.baseSalary}`;
-        }
-      }
-    },
     { title: '联系电话', dataIndex: 'phone', key: 'phone' },
-    { 
-      title: '状态', 
-      dataIndex: 'status', 
-      key: 'status', 
-      render: (status: string) => {
-        switch(status.toUpperCase()) {
-          case 'ACTIVE': return <span style={{ color: '#3f8600' }}>在职</span>;
-          case 'PROBATION': return <span style={{ color: '#1890ff' }}>试用期</span>;
-          case 'INACTIVE': return <span style={{ color: '#cf1322' }}>离职</span>;
-          default: return status;
-        }
-      }
-    },
-    { 
-      title: '操作', 
-      key: 'action', 
+    {
+      title: '操作',
+      key: 'action',
       render: (_: any, record: any) => (
         <Space size="middle">
-          <Button 
-            type="primary" 
-            icon={<EditOutlined />} 
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
             size="small"
             onClick={() => handleEdit(record)}
           >
             编辑
           </Button>
-          <Button 
-            danger 
-            icon={<DeleteOutlined />} 
+          <Button
+            danger
+            icon={<DeleteOutlined />}
             size="small"
             onClick={() => handleDelete(record)}
           >
@@ -363,12 +306,20 @@ const Personnel = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <h1>人员管理</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Select 
-            placeholder="选择部门" 
-            style={{ width: 150 }} 
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Input
+            placeholder="输入员工ID/姓名搜索"
+            allowClear
+            style={{ width: 220 }}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          <Select
+            placeholder="选择部门"
+            style={{ width: 150 }}
             value={selectedDepartment}
             onChange={setSelectedDepartment}
+            allowClear={false}
           >
             <Option key="全部" value="全部">全部</Option>
             {departments.map(dep => (
@@ -409,7 +360,7 @@ const Personnel = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ status: 'active', salaryType: 'PIECE' }}
+          initialValues={{ status: 'ACTIVE', salaryType: 'PIECE' }}
         >
           <Form.Item
             name="name"
@@ -504,9 +455,9 @@ const Personnel = () => {
             rules={[{ required: true, message: '请选择状态' }]}
           >
             <Select placeholder="请选择状态">
-              <Option value="active">在职</Option>
-              <Option value="probation">试用期</Option>
-              <Option value="inactive">离职</Option>
+              <Option value="ACTIVE">在职</Option>
+              <Option value="PROBATION">试用期</Option>
+              <Option value="INACTIVE">离职</Option>
             </Select>
           </Form.Item>
         </Form>
