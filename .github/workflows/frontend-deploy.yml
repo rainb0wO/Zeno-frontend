@@ -1,0 +1,86 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ "master" ]   # 根据实际默认分支调整
+  workflow_dispatch:          # 允许手动触发
+
+# ---------------------------------------------
+# 必要 Secrets（在仓库 Settings → Secrets and variables → Actions 设置）
+#   SSH_HOST      服务器 IP / 域名
+#   SSH_PORT      SSH 端口，默认 22
+#   SSH_USER      登录用户，如 deploy
+#   SSH_KEY       私钥全文（ed25519 或 rsa）
+#   TARGET_DIR    部署目录，如 /www/zeno/frontend/dist    (可选: 默认同下)
+# ---------------------------------------------
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # 最小权限原则
+
+    steps:
+      # 1. 拉取源码
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # 2. 设置 Node.js & 缓存依赖
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # 3. 安装依赖并构建
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      # 4. 压缩 dist 目录，减少传输体积
+      - name: Compress dist folder
+        run: |
+          tar -czf dist.tar.gz -C dist .
+
+      # 5. 上传文件到服务器 (通过 scp)
+      - name: Upload dist.tar.gz to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "dist.tar.gz"
+          target: "/tmp"   # 临时目录
+
+      # 6. 在服务器端解压并重载 Nginx
+      - name: Deploy on server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            DEPLOY_DIR="${{ secrets.TARGET_DIR }}"
+            if [ -z "$DEPLOY_DIR" ]; then
+              DEPLOY_DIR="/www/zeno/frontend/dist"
+            fi
+            sudo mkdir -p "$DEPLOY_DIR"
+            sudo tar -xzf /tmp/dist.tar.gz -C "$DEPLOY_DIR" --strip-components=0
+            sudo rm -f /tmp/dist.tar.gz
+            # 如有需要，可软删除旧版本或做一些备份处理
+            # 重新加载 Nginx （确保 ssh 用户有 sudo 权限或删掉 sudo）
+            sudo systemctl reload nginx
+            echo "🚀  Frontend deployed to $DEPLOY_DIR"
+
