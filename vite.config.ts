@@ -6,47 +6,49 @@ import legacy from '@vitejs/plugin-legacy'
 export default defineConfig({
   plugins: [
     react(),
-    legacy({
-      // 使用 browserslist 配置，支持更广泛的浏览器
-      targets: [
-        '> 0.5%',
-        'last 2 versions',
-        'Firefox ESR',
-        'not dead',
-        'iOS >= 12',
-        'Safari >= 12',
-        'Chrome >= 80',
-        'Edge >= 80',
-        'Android >= 8',
-        'Samsung >= 10',
-        'not IE 11',
-        'not op_mini all',
-      ],
-      // 启用现代 polyfills
-      modernPolyfills: true,
-      // 为旧浏览器生成单独的 chunk
-      renderLegacyChunks: true,
-      // 额外的 polyfills（legacy 插件会自动处理 regenerator-runtime）
-      // additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
-      // 渲染现代和传统 chunks
-      renderModernChunks: true,
-    }),
+    // 临时禁用 legacy 插件以减少内存使用
+    // legacy({
+    //   // 使用 browserslist 配置，支持更广泛的浏览器
+    //   targets: [
+    //     '> 0.5%',
+    //     'last 2 versions',
+    //     'Firefox ESR',
+    //     'not dead',
+    //     'iOS >= 12',
+    //     'Safari >= 12',
+    //     'Chrome >= 80',
+    //     'Edge >= 80',
+    //     'Android >= 8',
+    //     'Samsung >= 10',
+    //     'not IE 11',
+    //     'not op_mini all',
+    //   ],
+    //   // 启用现代 polyfills
+    //   modernPolyfills: true,
+    //   // 为旧浏览器生成单独的 chunk
+    //   renderLegacyChunks: true,
+    //   // 额外的 polyfills（legacy 插件会自动处理 regenerator-runtime）
+    //   // additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+    //   // 渲染现代和传统 chunks
+    //   renderModernChunks: true,
+    // }),
   ],
   build: {
     // CSS 目标设置为 Chrome 80，确保 CSS 兼容性
     cssTarget: 'chrome80',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        drop_debugger: true,
-        // 兼容旧浏览器
-        ecma: 2015,
-      },
-      format: {
-        ecma: 2015,
-      },
-    },
+    // 使用 esbuild 而不是 terser 以减少内存使用
+    minify: 'esbuild',
+    // terserOptions: {
+    //   compress: {
+    //     drop_console: false,
+    //     drop_debugger: true,
+    //     // 兼容旧浏览器
+    //     ecma: 2015,
+    //   },
+    //   format: {
+    //     ecma: 2015,
+    //   },
+    // },
     rollupOptions: {
       output: {
         // 代码分割优化
