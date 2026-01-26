@@ -22,12 +22,6 @@ const Personnel = () => {
   // 新增：部门列表
   const [departments, setDepartments] = useState<any[]>([]);
   
-  // 部门ID到名称的映射，使用useMemo缓存
-  const depNameById = useMemo(
-    () => Object.fromEntries(departments.map(d => [d.id, d.name])),
-    [departments]
-  );
-  
   // 开发环境全局调试
   if (import.meta.env.DEV) {
     (window as any).__EMP_LIST__ = employees;
