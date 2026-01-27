@@ -50,6 +50,13 @@ export interface CreateDepartmentParams {
   factoryId: string;
 }
 
+// 批量导入与模板下载
+export interface BatchImportResult {
+  successCount: number;
+  failureCount: number;
+  errors?: Array<{ row: number; message: string }>;
+}
+
 // 人员管理API
 export const personnelApi = {
   // 获取员工列表
@@ -102,6 +109,22 @@ export const personnelApi = {
   // 更新部门
   updateDepartment: (id: string, params: { name: string }): Promise<{ message: string; department: Department }> => {
     return put<{ message: string; department: Department }>(`/employees/departments/${id}`, params);
+  },
+
+  // 下载批量导入模板
+  downloadTemplate: (format: 'xlsx' | 'csv' = 'xlsx'): Promise<Blob> => {
+    // 直接返回 Blob，由调用方负责保存；若后端直接返回文件可用window.open
+    // 此处仍使用 axios 封装，设置 responseType
+    return get('/employees/template', { format }, { responseType: 'blob' as any });
+  },
+
+  // 批量导入员工
+  batchImportEmployees: (file: File): Promise<BatchImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return post<BatchImportResult>('/employees/batchUpload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
 
   // 删除部门

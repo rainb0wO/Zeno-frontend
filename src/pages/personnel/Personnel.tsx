@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Table, Space, Select, Modal, Form, Input, message, DatePicker, Spin } from 'antd';
+import { Card, Button, Table, Space, Select, Modal, Form, Input, message, Spin } from 'antd';
+import BatchImportModal from '../../components/BatchImportModal';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
 
@@ -244,6 +245,13 @@ const Personnel = () => {
     setEditingEmployee(null);
   };
   
+  // 打开批量导入弹窗
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleBatchImportSuccess = () => {
+    fetchEmployees();
+  };
+
   // 处理新增按钮
   const handleAdd = () => {
     setEditingEmployee(null);
@@ -312,6 +320,11 @@ const Personnel = () => {
           >
             新增员工
           </Button>
+          <Button
+            onClick={() => setImportOpen(true)}
+          >
+            批量导入
+          </Button>
         </div>
       </div>
       
@@ -327,6 +340,12 @@ const Personnel = () => {
         </Spin>
       </Card>
       
+      <BatchImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={handleBatchImportSuccess}
+      />
+
       <Modal
         title={editingEmployee ? '编辑员工' : '新增员工'}
         open={isModalVisible}
