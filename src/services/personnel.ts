@@ -5,17 +5,17 @@ export interface Employee {
   id: string;
   name: string;
   employeeId: string;
-  factoryId: string;
+  factoryId?: string;
   departmentId?: string;
-  position: string;
-  hireDate: string;
-  salaryType: 'PIECE' | 'TIME' | 'FIXED';
+  position?: string;
+  hireDate?: string;
+  salaryType?: 'PIECE' | 'TIME' | 'FIXED';
   baseSalary?: number;
   pieceRate?: number;
-  phone: string;
-  address: string;
-  createdAt: string;
-  updatedAt: string;
+  phone?: string;
+  address?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 部门类型
@@ -28,18 +28,20 @@ export interface Department {
 }
 
 // 创建员工参数
+// 说明：为满足「前端只填写姓名 + 联系电话，其余由后端自动生成或使用默认值」的需求，
+// 这里将除 name 外的字段全部改为可选。前端实际创建时只会传 { name, phone }。
 export interface CreateEmployeeParams {
   name: string;
-  employeeId: string;
-  factoryId: string;
+  employeeId?: string;
+  factoryId?: string;
   departmentId?: string;
-  position: string;
-  hireDate: string;
-  salaryType: 'PIECE' | 'TIME' | 'FIXED';
+  position?: string;
+  hireDate?: string;
+  salaryType?: 'PIECE' | 'TIME' | 'FIXED';
   baseSalary?: number;
   pieceRate?: number;
-  phone: string;
-  address: string;
+  phone?: string;
+  address?: string;
 }
 
 // 创建部门参数
@@ -65,6 +67,7 @@ export const personnelApi = {
   },
 
   // 创建员工
+  // 注意：前端只会传入 { name, phone }，其余字段由后端补充或使用默认值
   createEmployee: (params: CreateEmployeeParams): Promise<{ message: string; employee: Employee }> => {
     return post<{ message: string; employee: Employee }>('/employees', params);
   },

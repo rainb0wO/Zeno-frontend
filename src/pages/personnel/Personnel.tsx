@@ -161,20 +161,17 @@ const Personnel = () => {
     message.error(msgMap[code] || '操作失败，请稍后重试');
   };
   
-  // 处理编辑按钮 - 统一salaryType大小写和部门数据
+  // 处理编辑按钮
   const handleEdit = (record: any) => {
-    // 修复salaryType大小写不一致问题
-    const fixedRecord = { 
-      ...record, 
-      salaryType: String(record.salaryType).toUpperCase(),
-      // 直接使用departmentId字段
-      departmentId: record.departmentId,
-      // 处理日期数据，转换为dayjs对象
-      hireDate: dayjs(record.hireDate)
+    // 现在仅支持编辑姓名和联系电话，与列表展示字段保持一致
+    const simpleRecord = {
+      id: record.id,
+      name: record.name,
+      phone: record.phone,
     };
-    
-    setEditingEmployee(fixedRecord);
-    form.setFieldsValue(fixedRecord);
+
+    setEditingEmployee(simpleRecord);
+    form.setFieldsValue(simpleRecord);
     setIsModalVisible(true);
   };
   
@@ -204,27 +201,16 @@ const Personnel = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
-      // 统一处理表单数据
-      let values = await form.validateFields();
-      
-      // 处理日期字段 - 转换为YYYY-MM-DD格式
-      const hireDate = values.hireDate.format('YYYY-MM-DD');
+      // 只校验并获取姓名和联系电话，与「员工列表」展示字段对齐
+      const values = await form.validateFields();
 
-      // 构建最终提交数据（2+A：employeeId 由后端生成，前端不生成也不提交）
       const submitValues: any = {
-        ...values,
-        salaryType: String(values.salaryType).toUpperCase(),
-        status: String(values.status).toUpperCase(),
-        hireDate,
+        name: values.name,
+        // 联系电话为非必填，只有在有值时才提交
+        ...(values.phone ? { phone: values.phone } : {}),
       };
-
-      // 移除多余字段
-      delete submitValues.employeeId;
       
       if (editingEmployee) {
-        // 更新时不应提交入职日期
-        delete submitValues.hireDate;
-        // 调用后端更新 API
         await personnelApi.updateEmployee(editingEmployee.id, submitValues);
 
         // 统一以重新拉取列表为准，保证与后端一致
@@ -233,7 +219,6 @@ const Personnel = () => {
           message.success('员工信息更新成功');
         }
       } else {
-        // 调用后端创建 API
         await personnelApi.createEmployee(submitValues);
 
         // 统一以重新拉取列表为准，保证与后端一致
@@ -354,7 +339,7 @@ const Personnel = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ status: 'ACTIVE', salaryType: 'PIECE' }}
+          initialValues={{}}
         >
           <Form.Item
             name="name"
@@ -363,96 +348,12 @@ const Personnel = () => {
           >
             <Input placeholder="请输入员工姓名" />
           </Form.Item>
-          
-          <Form.Item
-            name="departmentId"
-            label="部门"
-            rules={[{ required: true, message: '请选择部门' }]}
-          >
-            <Select placeholder="请选择部门">
-              {departments.map(dep => (
-                <Option key={dep.id} value={dep.id}>{dep.name}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-          
-          <Form.Item
-            name="position"
-            label="职位"
-            rules={[{ required: true, message: '请输入职位' }]}
-          >
-            <Input placeholder="请输入职位" />
-          </Form.Item>
-          
+
           <Form.Item
             name="phone"
             label="联系电话"
-            rules={[
-              { required: true, message: '请输入联系电话' },
-              { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }
-            ]}
           >
             <Input placeholder="请输入联系电话" />
-          </Form.Item>
-          
-          <Form.Item
-            name="hireDate"
-            label="入职日期"
-            rules={[{ required: true, message: '请选择入职日期' }]}
-          >
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-          
-          <Form.Item
-            name="salaryType"
-            label="薪资类型"
-            rules={[{ required: true, message: '请选择薪资类型' }]}
-          >
-            <Select placeholder="请选择薪资类型">
-              <Option value="PIECE">计件</Option>
-              <Option value="TIME">计时</Option>
-              <Option value="FIXED">固定</Option>
-            </Select>
-          </Form.Item>
-          
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => 
-              prevValues.salaryType !== currentValues.salaryType
-            }
-          >
-            {({ getFieldValue }) => {
-              const salaryType = getFieldValue('salaryType');
-              return salaryType === 'PIECE' ? (
-                <Form.Item
-                  name="pieceRate"
-                  label="计件单价（元/件）"
-                  rules={[{ required: true, message: '请输入计件单价' }]}
-                >
-                  <Input type="number" step="0.01" placeholder="请输入计件单价" />
-                </Form.Item>
-              ) : (
-                <Form.Item
-                  name="baseSalary"
-                  label={salaryType === 'TIME' ? '计时工资（元/时）' : '基本工资（元）'}
-                  rules={[{ required: true, message: '请输入基本工资' }]}
-                >
-                  <Input type="number" placeholder={salaryType === 'TIME' ? '请输入计时工资' : '请输入基本工资'} />
-                </Form.Item>
-              );
-            }}
-          </Form.Item>
-          
-          <Form.Item
-            name="status"
-            label="状态"
-            rules={[{ required: true, message: '请选择状态' }]}
-          >
-            <Select placeholder="请选择状态">
-              <Option value="ACTIVE">在职</Option>
-              <Option value="PROBATION">试用期</Option>
-              <Option value="INACTIVE">离职</Option>
-            </Select>
           </Form.Item>
         </Form>
       </Modal>
