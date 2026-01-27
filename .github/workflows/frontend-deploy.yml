@@ -63,10 +63,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
-            DEPLOY_DIR="${{ secrets.TARGET_DIR }}"
-            if [ -z "$DEPLOY_DIR" ]; then
-              DEPLOY_DIR="/www/zeno/frontend/dist"
-            fi
+            DEPLOY_DIR="${TARGET_DIR:-/www/zeno/frontend/dist}"
             
             # 创建部署目录（如果不存在）
             sudo mkdir -p "$DEPLOY_DIR"
