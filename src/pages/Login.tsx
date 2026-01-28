@@ -43,6 +43,7 @@ const Login = () => {
       console.error('登录失败:', error);
       const errorCode = error.response?.data?.code;
       const errorMessage = error.response?.data?.message;
+      const statusCode = error.response?.status;
       
       // 维护模式错误：跳转到维护页面
       if (errorCode === 1003) {
@@ -50,9 +51,23 @@ const Login = () => {
         return;
       }
       
-      // 维护模式错误：跳转到维护页面
-      if (errorCode === 1003) {
-        navigate('/maintenance', { replace: true });
+      // 502 Bad Gateway 错误：后端服务不可用
+      if (statusCode === 502) {
+        setErrorMsg('服务器暂时不可用，请稍后重试。如果问题持续，请联系管理员。');
+        // 502错误不自动清除，让用户知道问题严重性
+        return;
+      }
+      
+      // 503 Service Unavailable 错误：服务不可用
+      if (statusCode === 503) {
+        setErrorMsg('服务暂时不可用，请稍后重试');
+        return;
+      }
+      
+      // 网络连接错误
+      if (!error.response) {
+        setErrorMsg('网络连接失败，请检查网络设置');
+        setTimeout(() => setErrorMsg(''), 5000);
         return;
       }
       

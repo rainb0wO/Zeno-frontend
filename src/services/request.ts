@@ -104,6 +104,12 @@ request.interceptors.response.use(
         case 500:
           message.error('服务器内部错误，请稍后重试');
           break;
+        case 502:
+          message.error('服务器暂时不可用，请稍后重试');
+          break;
+        case 503:
+          message.error('服务暂时不可用，请稍后重试');
+          break;
         default:
           if (data?.message) {
             message.error(data.message);
