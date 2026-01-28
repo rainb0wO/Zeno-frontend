@@ -39,7 +39,8 @@ body {
 /* Ant Table 在小屏宽度不足时可横向滚动 */
 .ant-table-wrapper{overflow-x:auto;}
 .ant-table{min-width:600px;}
-}
+/* end responsive table */
+
 
 h1 {
   font-size: 3.2em;
