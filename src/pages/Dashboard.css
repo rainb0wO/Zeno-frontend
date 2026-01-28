@@ -212,6 +212,14 @@
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  /* 修复行间距导致的横向滚动 */
+  .ant-row{margin:0!important;width:100%!important;}
+  .ant-col{padding:0!important;}
+
+  /* 指标卡片字体与布局 */
+  .metric-card .ant-statistic-content{font-size:24px!important;}
+  .metric-title{font-size:12px;}
+
   .dashboard-container {
     padding: 16px 0;
   }
