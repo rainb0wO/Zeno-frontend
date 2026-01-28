@@ -201,6 +201,11 @@
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .main-content {
+    margin: 8px;
+    padding: 16px;
+  }
+
   .main-sider {
     width: 0;
   }

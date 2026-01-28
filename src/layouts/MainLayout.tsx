@@ -36,14 +36,14 @@ const MainLayout: React.FC = () => {
   // 加载厂区列表 - 仅在用户认证后执行一次
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadFactories = async () => {
       try {
         const response = await factoryApi.getFactories();
         if (!isMounted) return;
-        
+
         setFactories(response.factories);
-        
+
         // 如果用户有默认厂区，设置为当前厂区
         if (user?.factoryId && response.factories.length > 0) {
           const userFactory = response.factories.find(f => f.id === user.factoryId);
@@ -59,12 +59,12 @@ const MainLayout: React.FC = () => {
         console.error('加载厂区列表失败:', error);
       }
     };
-    
+
     // 只有在用户认证且厂区列表为空时才加载
     if (user && isAuthenticated && factories.length === 0) {
       loadFactories();
     }
-    
+
     return () => {
       isMounted = false;
     };
@@ -160,12 +160,22 @@ const MainLayout: React.FC = () => {
     setCollapsed(prev => !prev);
   }, []);
 
+  // 当窗口宽度小于 lg 断点时自动折叠侧边栏
+  const handleBreakpoint = useCallback((broken: boolean) => {
+    if (broken) {
+      setCollapsed(true);
+    }
+  }, []);
+
   return (
     <Layout className="main-layout">
       <Sider
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
+        breakpoint="lg"
+        collapsedWidth={0}
+        onBreakpoint={handleBreakpoint}
         className="main-sider"
         trigger={null}
         width={240}
