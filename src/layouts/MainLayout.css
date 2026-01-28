@@ -201,6 +201,14 @@
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .user-button {
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 8px;
+  }
+
   .main-content {
     margin: 8px;
     padding: 16px;
