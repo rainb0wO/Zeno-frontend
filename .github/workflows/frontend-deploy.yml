@@ -69,16 +69,16 @@ jobs:
             sudo mkdir -p "$DEPLOY_DIR"
             
             # 清空目录（保留目录本身）
-            echo "🧹 清理旧文件..."
+            echo "==> 清理旧文件"
             sudo find "$DEPLOY_DIR" -mindepth 1 -delete
             
             # 解压新文件
-            echo "🚀 解压新版本..."
+            echo "==> 解压新版本"
             sudo tar -xzf /tmp/dist.tar.gz -C "$DEPLOY_DIR" --strip-components=0
             
             # 设置正确的权限
-            echo "🔒 设置权限..."
-            sudo chown -R www-data:www-data "$DEPLOY_DIR"
+            echo "==> 设置权限"
+            sudo chown -R nginx:nginx "$DEPLOY_DIR"
             sudo chmod -R 755 "$DEPLOY_DIR"
             
             # 清理临时文件
