@@ -1,88 +1,100 @@
-import { useState } from 'react';
-import { Card, Button, Table, Space, Select, DatePicker, Statistic, Row, Col, Tooltip } from 'antd';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, Button, Table, Space, DatePicker, Statistic, Row, Col, message, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import dayjs, { Dayjs } from 'dayjs';
+import attendanceApi from '../../services/attendance';
 
-const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const Attendance = () => {
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [selectedDateRange, setSelectedDateRange] = useState<any>(null);
-  
-  // Mock data
-  const attendanceRecords = [
-    { 
-      id: '1', 
-      employeeName: '张三', 
-      employeeId: 'EMP001', 
-      date: '2025-12-08', 
-      checkInTime: '08:05', 
-      checkOutTime: '18:15', 
-      workHours: 10.17, 
-      status: 'present' 
-    },
-    { 
-      id: '2', 
-      employeeName: '李四', 
-      employeeId: 'EMP002', 
-      date: '2025-12-08', 
-      checkInTime: '08:15', 
-      checkOutTime: '18:00', 
-      workHours: 9.75, 
-      status: 'late' 
-    },
-    { 
-      id: '3', 
-      employeeName: '王五', 
-      employeeId: 'EMP003', 
-      date: '2025-12-08', 
-      checkInTime: null, 
-      checkOutTime: null, 
-      workHours: 0, 
-      status: 'absent' 
-    },
-    { 
-      id: '4', 
-      employeeName: '赵六', 
-      employeeId: 'EMP004', 
-      date: '2025-12-08', 
-      checkInTime: '07:58', 
-      checkOutTime: '17:30', 
-      workHours: 9.53, 
-      status: 'early_leave' 
-    },
-  ];
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchRecords = async () => {
+    setLoading(true);
+    try {
+      const params: any = {};
+      if (dateRange) {
+        params.startDate = dateRange[0].format('YYYY-MM-DD');
+        params.endDate = dateRange[1].format('YYYY-MM-DD');
+      }
+      const res = await attendanceApi.getAttendanceRecords(params);
+      setRecords(res.attendanceRecords || []);
+    } catch (e: any) {
+      console.error(e);
+      message.error('获取考勤数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, [dateRange]);
+
+  const summary = useMemo(() => {
+    const statusCount: Record<string, number> = {
+      PRESENT: 0,
+      LATE: 0,
+      EARLY_LEAVE: 0,
+      ABSENT: 0,
+    };
+    records.forEach((r) => {
+      statusCount[r.status] = (statusCount[r.status] || 0) + 1;
+    });
+    return statusCount;
+  }, [records]);
 
   const columns = [
     { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId' },
-    { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName' },
+    { title: '姓名', dataIndex: 'name', key: 'name' },
+    { title: '联系电话', dataIndex: 'phone', key: 'phone' },
     { title: '日期', dataIndex: 'date', key: 'date' },
-    { title: '上班时间', dataIndex: 'checkInTime', key: 'checkInTime', render: (time: string | null) => time || '-' },
-    { title: '下班时间', dataIndex: 'checkOutTime', key: 'checkOutTime', render: (time: string | null) => time || '-' },
-    { title: '工作时长', dataIndex: 'workHours', key: 'workHours', render: (hours: number) => `${hours}小时` },
-    { 
-      title: '状态', 
-      dataIndex: 'status', 
-      key: 'status', 
-      render: (status: string) => {
-        switch(status) {
-          case 'present': return <Space><CheckOutlined style={{ color: '#3f8600' }} /> 正常</Space>;
-          case 'late': return <Space><ClockCircleOutlined style={{ color: '#faad14' }} /> 迟到</Space>;
-          case 'absent': return <Space><CloseOutlined style={{ color: '#cf1322' }} /> 缺勤</Space>;
-          case 'early_leave': return <Space><ClockCircleOutlined style={{ color: '#faad14' }} /> 早退</Space>;
-          case 'sick_leave': return <Space><ClockCircleOutlined style={{ color: '#1890ff' }} /> 病假</Space>;
-          case 'personal_leave': return <Space><ClockCircleOutlined style={{ color: '#1890ff' }} /> 事假</Space>;
-          default: return status;
+    { title: '上班时间', dataIndex: 'checkInTime', key: 'checkInTime', render: (t: string|null) => t || '-' },
+    { title: '下班时间', dataIndex: 'checkOutTime', key: 'checkOutTime', render: (t: string|null) => t || '-' },
+    { title: '工作时长', dataIndex: 'workHours', key: 'workHours', render: (h: number) => `${h || 0}小时` },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (s: string) => {
+        switch (s) {
+          case 'PRESENT':
+            return (
+              <Space>
+                <CheckOutlined style={{ color: '#3f8600' }} /> 正常
+              </Space>
+            );
+          case 'LATE':
+            return (
+              <Space>
+                <ClockCircleOutlined style={{ color: '#faad14' }} /> 迟到
+              </Space>
+            );
+          case 'EARLY_LEAVE':
+            return (
+              <Space>
+                <ClockCircleOutlined style={{ color: '#faad14' }} /> 早退
+              </Space>
+            );
+          case 'ABSENT':
+          default:
+            return (
+              <Space>
+                <CloseOutlined style={{ color: '#cf1322' }} /> 缺勤
+              </Space>
+            );
         }
-      }
+      },
     },
-    { 
-      title: '操作', 
-      key: 'action', 
-      render: (_: any, _record: any) => (
-        <Space size="middle">
-          <Button type="primary" icon={<EditOutlined />} size="small">编辑</Button>
-        </Space>
+    {
+      title: '操作',
+      key: 'action',
+      render: () => (
+        <Button type="link" icon={<EditOutlined />}>
+          编辑
+        </Button>
       ),
     },
   ];
@@ -92,41 +104,21 @@ const Attendance = () => {
       <div className="page-header">
         <h1>考勤管理</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Select 
-            placeholder="选择部门" 
-            style={{ width: 150 }}
-            value={selectedDepartment}
-            onChange={setSelectedDepartment}
-            allowClear
-          >
-            <Option value="all">全部部门</Option>
-            <Option value="production">生产部</Option>
-            <Option value="quality">质检部</Option>
-            <Option value="logistics">物流部</Option>
-          </Select>
-          <RangePicker 
-            style={{ width: 300 }} 
-            value={selectedDateRange}
-            onChange={setSelectedDateRange}
+          <RangePicker
+            style={{ width: 300 }}
+            value={dateRange}
+            onChange={(val) => setDateRange(val as any)}
           />
-          <Tooltip title={!selectedDepartment ? '请先选择部门' : ''}>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />}
-              disabled={!selectedDepartment}
-            >
-              录入今日考勤
-            </Button>
-          </Tooltip>
+          <Button type="primary" icon={<PlusOutlined />}>录入今日考勤</Button>
         </div>
       </div>
-      
+
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col span={6}>
           <Card>
             <Statistic
               title="今日正常考勤"
-              value={1}
+              value={summary.PRESENT}
               prefix={<CheckOutlined style={{ color: '#3f8600' }} />}
               styles={{ content: { color: '#3f8600' } }}
             />
@@ -136,7 +128,7 @@ const Attendance = () => {
           <Card>
             <Statistic
               title="今日迟到"
-              value={1}
+              value={summary.LATE}
               prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
               styles={{ content: { color: '#faad14' } }}
             />
@@ -146,7 +138,7 @@ const Attendance = () => {
           <Card>
             <Statistic
               title="今日早退"
-              value={1}
+              value={summary.EARLY_LEAVE}
               prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
               styles={{ content: { color: '#faad14' } }}
             />
@@ -156,21 +148,18 @@ const Attendance = () => {
           <Card>
             <Statistic
               title="今日缺勤"
-              value={1}
+              value={summary.ABSENT}
               prefix={<CloseOutlined style={{ color: '#cf1322' }} />}
               styles={{ content: { color: '#cf1322' } }}
             />
           </Card>
         </Col>
       </Row>
-      
-      <Card title="今日考勤记录" variant="outlined">
-        <Table 
-          columns={columns} 
-          dataSource={attendanceRecords} 
-          rowKey="id" 
-          pagination={{ pageSize: 10 }} 
-        />
+
+      <Card title="考勤记录">
+        <Spin spinning={loading}>
+          <Table rowKey="id" columns={columns} dataSource={records} pagination={{ pageSize: 10 }} />
+        </Spin>
       </Card>
     </div>
   );

@@ -18,7 +18,7 @@ export interface Employee {
   updatedAt?: string;
 }
 
-// 部门类型
+// ---- 已移除所有部门相关接口 ----
 export interface Department {
   id: string;
   name: string;
