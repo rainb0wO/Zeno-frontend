@@ -237,7 +237,7 @@ const Logistics = () => {
   ];
 
   return (
-    <div className="logistics-container">
+    <div className="page-container logistics-container">
       {/* Header */}
       <div className="logistics-header">
         <div className="logistics-title-section">

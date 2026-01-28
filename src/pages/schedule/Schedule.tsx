@@ -273,8 +273,10 @@ const SchedulePage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <h2>排班管理</h2>
+    <div className="page-container">
+      <div className="page-header">
+        <h2>排班管理</h2>
+      </div>
 
       {/* 筛选区 */}
       <div style={{ marginBottom: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>

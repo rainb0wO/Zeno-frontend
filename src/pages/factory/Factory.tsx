@@ -109,8 +109,8 @@ const Factory = () => {
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+    <div className="page-container">
+      <div className="page-header">
         <h1>厂区管理</h1>
         <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
           新建厂区

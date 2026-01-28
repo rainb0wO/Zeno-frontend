@@ -179,9 +179,24 @@
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
   min-height: calc(100vh - 96px);
-  max-width: 1400px;
-  margin-left: 0;
-  margin-right: auto;
+}
+
+/* 通用页面容器：统一各业务页的宽度与对齐 */
+.page-container {
+  max-width: 1440px;
+  margin: 0;
+  padding: 0 8px 16px;
+  box-sizing: border-box;
+}
+
+/* 通用标题区域：统一顶部标题与操作区的布局 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* 响应式设计 */

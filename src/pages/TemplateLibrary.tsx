@@ -94,8 +94,8 @@ const TemplateLibrary = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+    <div className="page-container">
+      <div className="page-header">
         <h1><AppstoreOutlined /> 模板库管理</h1>
       </div>
 
