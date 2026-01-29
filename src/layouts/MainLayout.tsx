@@ -5,12 +5,12 @@ import {
   Dropdown,
   Button,
   Space,
-  Select,
   message,
   Typography,
   Grid,
   Drawer
 } from 'antd';
+import Select from 'antd/es/select';
 import {
   HomeOutlined,
   UserOutlined,
@@ -35,7 +35,7 @@ import { factoryApi } from '../services/factory';
 import './MainLayout.css';
 
 const { Header, Sider, Content } = Layout;
-const { Option } = Select;
+
 const { Title } = Typography;
 
 const MainLayout: React.FC = () => {
@@ -223,9 +223,9 @@ const MainLayout: React.FC = () => {
               size="large"
             >
               {factories.map(factory => (
-                <Option key={factory.id} value={factory.id}>
+                <Select.Option key={factory.id} value={factory.id}>
                   {factory.name}
-                </Option>
+                </Select.Option>
               ))}
             </Select>
           </div>
