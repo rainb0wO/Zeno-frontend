@@ -25,7 +25,8 @@ import {
   MenuUnfoldOutlined,
   SettingOutlined,
   AppstoreOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  ApartmentOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useUserStore } from '../stores/userStore';
@@ -87,6 +88,7 @@ const MainLayout: React.FC = () => {
       { key: '/template-library', label: '模板库管理', icon: <AppstoreOutlined /> },
       { key: '/salary', label: '工资计算', icon: <DollarOutlined /> },
       { key: '/personnel', label: '人员管理', icon: <TeamOutlined /> },
+      { key: '/department', label: '部门管理', icon: <ApartmentOutlined /> },
       { key: '/logistics', label: '物流管理', icon: <TruckOutlined /> },
       { key: '/attendance', label: '考勤管理', icon: <ClockCircleOutlined /> },
       { key: '/schedule', label: '排班管理', icon: <CalendarOutlined /> }

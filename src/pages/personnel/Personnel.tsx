@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Table, Space, Modal, Form, Input, message, Spin, Select } from 'antd';
+import { Card, Button, Table, Space, Modal, Form, Input, message, Spin, Select, Tag, Alert } from 'antd';
 import BatchImportModal from '../../components/BatchImportModal';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
@@ -225,7 +225,7 @@ const Personnel = () => {
         // 统一以重新拉取列表为准，保证与后端一致
         const ok = await fetchEmployees();
         if (ok) {
-          message.success('员工创建成功');
+          message.success('员工创建成功，请在部门管理中进行分配');
         }
       }
       
@@ -264,6 +264,17 @@ const Personnel = () => {
     { title: '姓名', dataIndex: 'name', key: 'name', render: (name: string) => <Space><UserOutlined />{name}</Space> },
     { title: '联系电话', dataIndex: 'phone', key: 'phone' },
     {
+      title: '部门',
+      dataIndex: 'departmentName',
+      key: 'department',
+      render: (departmentName: string, record: any) => {
+        if (departmentName) {
+          return departmentName;
+        }
+        return <Tag color="default">未分配</Tag>;
+      },
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_: any, record: any) => (
@@ -288,6 +299,11 @@ const Personnel = () => {
       ),
     },
   ];
+
+  // 计算未分配员工数量
+  const unassignedCount = useMemo(() => {
+    return employees.filter(emp => !emp.departmentId).length;
+  }, [employees]);
 
   return (
     <div className="page-container">
@@ -327,6 +343,15 @@ const Personnel = () => {
           </Button>
         </div>
       </div>
+
+      {unassignedCount > 0 && (
+        <Alert
+          message={`共有 ${unassignedCount} 名员工未分配部门，请在"部门管理"中进行分配`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
       
       {/* 移除variant="outlined"属性，兼容Ant Design v4 */}
       <Card title="员工列表">

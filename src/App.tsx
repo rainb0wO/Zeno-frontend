@@ -19,6 +19,9 @@ import Salary from './pages/salary/Salary';
 // 人员管理
 import Personnel from './pages/personnel/Personnel';
 
+// 部门管理
+import Department from './pages/department/Department';
+
 // 物流管理
 import Logistics from './pages/logistics/Logistics';
 
@@ -62,6 +65,7 @@ function App() {
             <Route path="template-library" element={<TemplateLibrary />} />
             <Route path="salary" element={<Salary />} />
             <Route path="personnel" element={<Personnel />} />
+            <Route path="department" element={<Department />} />
             <Route path="logistics" element={<Logistics />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="schedule" element={<Schedule />} />
