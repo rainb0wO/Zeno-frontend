@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Modal, Upload, Button, message, Space, Typography, Progress, Table } from 'antd';
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
-import personnelApi, { BatchImportResult } from '../services/personnel';
+import personnelApi from '../services/personnel';
+import type { BatchImportResult } from '../services/personnel';
 
 const { Text, Link } = Typography;
 

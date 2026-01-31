@@ -6,7 +6,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  RestoreOutlined,
+  UndoOutlined,
   ClearOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
@@ -124,7 +124,7 @@ const DepartmentTree: React.FC<DepartmentTreeProps> = ({
           {
             key: 'restore',
             label: '恢复',
-            icon: <RestoreOutlined />,
+            icon: <UndoOutlined />,
             onClick: () => onRestore(department),
           },
           ...(isSuperAdmin
