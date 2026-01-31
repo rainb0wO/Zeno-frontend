@@ -176,7 +176,7 @@ const MainLayout: React.FC = () => {
           <Menu
             theme="dark"
             mode="inline"
-            defaultSelectedKeys={['/dashboard']}
+            selectedKeys={[location.pathname]}
             items={menuItems}
             onClick={onMenuClick}
             className="main-menu"
@@ -199,7 +199,7 @@ const MainLayout: React.FC = () => {
           <Menu
             theme="light"
             mode="inline"
-            defaultSelectedKeys={['/dashboard']}
+            selectedKeys={[location.pathname]}
             items={menuItems}
             onClick={onMenuClick}
           />
