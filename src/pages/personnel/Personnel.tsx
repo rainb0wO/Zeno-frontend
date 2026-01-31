@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Table, Space, Modal, Form, Input, message, Spin } from 'antd';
+import { Card, Button, Table, Space, Modal, Form, Input, message, Spin, Select } from 'antd';
 import BatchImportModal from '../../components/BatchImportModal';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
@@ -308,9 +308,9 @@ const Personnel = () => {
             onChange={setSelectedDepartment}
             allowClear={false}
           >
-            <Option key="全部" value="全部">全部</Option>
+            <Select.Option key="全部" value="全部">全部</Select.Option>
             {departments.map(dep => (
-              <Option key={dep.id} value={dep.id}>{dep.name}</Option>
+              <Select.Option key={dep.id} value={dep.id}>{dep.name}</Select.Option>
             ))}
           </Select>
           <Button 
