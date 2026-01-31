@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Card, Switch, Space, Modal, Form, Input, message, Select, Button } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DepartmentTree from '../../components/DepartmentTree';
@@ -90,6 +91,14 @@ const Department: React.FC = () => {
   useEffect(() => {
     loadDepartments();
   }, [currentFactory?.id, showDeleted]);
+
+  // 新增根部门
+  const handleAddRoot = () => {
+    setEditingDepartment(null);
+    setParentId(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
 
   // 新增子部门
   const handleAddChild = (parentId: string) => {
@@ -280,6 +289,13 @@ const Department: React.FC = () => {
         <div className="page-header" style={{ marginBottom: 16 }}>
           <h1>部门管理</h1>
           <Space>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAddRoot}
+            >
+              新增部门
+            </Button>
             <span>显示已删除：</span>
             <Switch checked={showDeleted} onChange={setShowDeleted} />
           </Space>
@@ -308,7 +324,7 @@ const Department: React.FC = () => {
 
         {/* 新增/编辑部门弹窗 */}
         <Modal
-          title={editingDepartment ? '编辑部门' : '新增部门'}
+          title={editingDepartment ? '编辑部门' : parentId ? '新增子部门' : '新增部门'}
           open={isModalVisible}
           onOk={handleSubmit}
           onCancel={() => {
