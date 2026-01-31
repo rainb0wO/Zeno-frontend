@@ -28,7 +28,7 @@ import {
   CalendarOutlined,
   ApartmentOutlined
 } from '@ant-design/icons';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useUserStore } from '../stores/userStore';
 import { useFactoryStore } from '../stores/factoryStore';
 import { authApi } from '../services/auth';
@@ -45,6 +45,7 @@ const MainLayout: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, clearAuth, updateFactoryId, isAuthenticated } = useUserStore();
   const { currentFactory, factories, setCurrentFactory, setFactories } = useFactoryStore();
 
@@ -141,7 +142,9 @@ const MainLayout: React.FC = () => {
   const closeDrawer = () => setDrawerOpen(false);
 
   const onMenuClick = ({ key }: { key: string }) => {
-    navigate(key);
+    if (location.pathname !== key) {
+      navigate(key);
+    }
     if (!screens.lg) closeDrawer();
   };
 
