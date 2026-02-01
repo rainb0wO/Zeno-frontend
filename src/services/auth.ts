@@ -19,7 +19,9 @@ export interface LoginParams {
 // 注册参数
 export interface RegisterParams {
   username: string;
-  email: string;
+  companyName: string; // 企业名称（必填）
+  phone?: string;      // 手机号（选填）
+  email?: string;      // 邮箱（选填）
   password: string;
   confirmPassword: string;
 }
