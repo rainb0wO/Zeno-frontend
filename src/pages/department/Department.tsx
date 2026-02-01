@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Switch, Space, Modal, Form, Input, message, Select, Button } from 'antd';
+import { Layout, Card, Switch, Space, Modal, Form, Input, message, Select, Button, Grid } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useReadonly } from '../../contexts/ReadonlyContext';
+import DepartmentMobile from './DepartmentMobile';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DepartmentTree from '../../components/DepartmentTree';
@@ -15,11 +17,15 @@ import personnelApi from '../../services/personnel';
 const { Content, Sider } = Layout;
 
 const Department: React.FC = () => {
+  const screens = Grid.useBreakpoint();
+  const { isReadonly, showTip } = useReadonly();
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [parentId, setParentId] = useState<string | null>(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+
+  const isMobileView = !screens.md;
 
   const {
     departments,
@@ -94,6 +100,10 @@ const Department: React.FC = () => {
 
   // 新增根部门
   const handleAddRoot = () => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setEditingDepartment(null);
     setParentId(null);
     form.resetFields();
@@ -102,6 +112,10 @@ const Department: React.FC = () => {
 
   // 新增子部门
   const handleAddChild = (parentId: string) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setEditingDepartment(null);
     setParentId(parentId);
     form.resetFields();
@@ -110,6 +124,10 @@ const Department: React.FC = () => {
 
   // 编辑部门
   const handleEdit = (department: Department) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setEditingDepartment(department);
     setParentId(null);
     form.setFieldsValue({
@@ -121,6 +139,10 @@ const Department: React.FC = () => {
 
   // 删除部门
   const handleDelete = (department: Department) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     Modal.confirm({
       title: '删除部门',
       content:
@@ -143,6 +165,10 @@ const Department: React.FC = () => {
 
   // 恢复部门
   const handleRestore = (department: Department) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     Modal.confirm({
       title: '恢复部门',
       content: `确认要恢复部门 "${department.name}" 及其所有下级数据吗？`,
@@ -163,6 +189,10 @@ const Department: React.FC = () => {
 
   // 永久清除
   const handleForceDelete = (department: Department) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     Modal.confirm({
       title: '永久清除部门',
       content: '此操作将彻底删除该部门及全部下级数据且无法恢复。确认要永久清除？',
@@ -282,6 +312,10 @@ const Department: React.FC = () => {
     };
     fetchEmployees();
   }, []);
+
+  if (isMobileView) {
+    return <DepartmentMobile departments={departments} showDeleted={showDeleted} />;
+  }
 
   return (
     <DndProvider backend={HTML5Backend}>

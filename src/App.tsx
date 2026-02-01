@@ -23,6 +23,7 @@ import PersonnelDetail from './pages/personnel/PersonnelDetail';
 
 // 部门管理
 import Department from './pages/department/Department';
+import DepartmentDetail from './pages/department/DepartmentDetail';
 
 // 物流管理
 import Logistics from './pages/logistics/Logistics';
