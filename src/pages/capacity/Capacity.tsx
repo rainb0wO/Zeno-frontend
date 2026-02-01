@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Table, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Progress, Tag } from 'antd';
 import { PlusOutlined, BarChartOutlined, ToolOutlined, FileTextOutlined, CalendarOutlined } from '@ant-design/icons';
+import BizAction from '../../components/BizAction';
+import { useReadonly } from '../../contexts/ReadonlyContext';
 import { capacityApi } from '../../services/capacity';
 import type { ProductionPlan, CreateProductionPlanParams, CapacityStatistics } from '../../services/capacity';
 import { useFactoryStore } from '../../stores/factoryStore';
@@ -15,6 +17,7 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const Capacity = () => {
+  const { isReadonly, showTip } = useReadonly();
   const [productionPlans, setProductionPlans] = useState<ProductionPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -83,6 +86,10 @@ const Capacity = () => {
   };
 
   const showAddModal = () => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setIsEdit(false);
     setCurrentPlan(null);
     form.resetFields();
@@ -291,9 +298,9 @@ const Capacity = () => {
     <div className="page-container">
       <div className="page-header">
         <h1>产能管理</h1>
-        <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
+        <BizAction type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
           新建生产计划
-        </Button>
+        </BizAction>
       </div>
       
       {/* 统计卡片 */}
