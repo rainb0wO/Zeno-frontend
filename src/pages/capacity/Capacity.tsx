@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Table, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Progress, Tag } from 'antd';
+import { Card, Button, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Progress, Tag } from 'antd';
 import { PlusOutlined, BarChartOutlined, ToolOutlined, FileTextOutlined, CalendarOutlined } from '@ant-design/icons';
 import BizAction from '../../components/BizAction';
 import { useReadonly } from '../../contexts/ReadonlyContext';
@@ -11,6 +11,8 @@ import type { Process } from '../../services/process';
 import ProcessGenerator from '../../components/ProcessGenerator';
 import PieceWorkManager from '../../components/PieceWorkManager';
 import SmartScheduleGenerator from '../../components/SmartScheduleGenerator';
+import ResponsiveDataList from '../../components/ResponsiveDataList';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -18,6 +20,8 @@ const { RangePicker } = DatePicker;
 
 const Capacity = () => {
   const { isReadonly, showTip } = useReadonly();
+  const navigate = useNavigate();
+  const { currentFactory } = useFactoryStore();
   const [productionPlans, setProductionPlans] = useState<ProductionPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -25,7 +29,6 @@ const Capacity = () => {
   const [currentPlan, setCurrentPlan] = useState<ProductionPlan | null>(null);
   const [statistics, setStatistics] = useState<CapacityStatistics | null>(null);
   const [form] = Form.useForm();
-  const { currentFactory } = useFactoryStore();
 
   // 新增：工序、计件、排班弹窗状态
   const [showProcessGenerator, setShowProcessGenerator] = useState(false);
@@ -348,12 +351,30 @@ const Capacity = () => {
       )}
       
       <Card title="生产计划列表" variant="outlined">
-        <Table 
-          columns={columns} 
-          dataSource={productionPlans} 
-          rowKey="id" 
+        <ResponsiveDataList
+          columns={columns}
+          dataSource={productionPlans}
+          rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10 }} 
+          pagination={{ pageSize: 10 }}
+          onRowClick={(record) => {
+            navigate(`/capacity/${record.id}`);
+          }}
+          mobileRenderItem={(record) => (
+            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <div style={{ fontWeight: 600 }}>{record.productName}</div>
+                {getStatusTag(record.status)}
+              </Space>
+              <Progress percent={record.progress || 0} size="small" />
+              <div style={{ fontSize: 12, color: '#666' }}>
+                目标/实际：{record.targetQty} / {record.actualQty || 0}
+              </div>
+              <div style={{ fontSize: 12, color: '#666' }}>
+                时间：{record.startDate} ~ {record.endDate}
+              </div>
+            </Space>
+          )}
         />
       </Card>
       

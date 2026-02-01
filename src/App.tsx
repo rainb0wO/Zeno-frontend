@@ -12,6 +12,7 @@ import MainLayout from './layouts/MainLayout';
 
 // 产能管理
 import Capacity from './pages/capacity/Capacity';
+import CapacityDetail from './pages/capacity/CapacityDetail';
 
 // 工资计算
 import Salary from './pages/salary/Salary';
@@ -33,6 +34,7 @@ import Schedule from './pages/schedule/Schedule';
 
 // 厂区管理
 import Factory from './pages/factory/Factory';
+import FactoryDetail from './pages/factory/FactoryDetail';
 
 // 设置页面
 import PersonalSettings from './pages/PersonalSettings';
@@ -61,7 +63,9 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="factory" element={<Factory />} />
+            <Route path="factory/:id" element={<FactoryDetail />} />
             <Route path="capacity" element={<Capacity />} />
+            <Route path="capacity/:id" element={<CapacityDetail />} />
             <Route path="template-library" element={<TemplateLibrary />} />
             <Route path="salary" element={<Salary />} />
             <Route path="personnel" element={<Personnel />} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Table, Space, Modal, Form, Input, Select, message } from 'antd';
+import { Card, Table, Space, Modal, Form, Input, Select, message, Progress } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { factoryApi } from '../../services/factory';
 import type { Factory as FactoryType, CreateFactoryParams } from '../../services/factory';
