@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isMobileRuntime } from '../utils/platform';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { message } from 'antd';
 
@@ -30,6 +31,11 @@ request.interceptors.request.use(
     console.log('请求拦截器 - 是否为登录请求:', isLoginRequest);
     
     if (!isLoginRequest) {
+      // 添加平台标识
+      if (isMobileRuntime()) {
+        config.headers = config.headers || {};
+        config.headers['x-platform'] = 'mobile';
+      }
       const token = localStorage.getItem('token');
       console.log('请求拦截器 - Token 是否存在:', !!token);
       
