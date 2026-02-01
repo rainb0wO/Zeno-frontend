@@ -3,10 +3,13 @@ import { Card, Button, Table, Space, Modal, Form, Input, Select, message } from 
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { factoryApi } from '../../services/factory';
 import type { Factory as FactoryType, CreateFactoryParams } from '../../services/factory';
+import BizAction from '../../components/BizAction';
+import { useReadonly } from '../../contexts/ReadonlyContext';
 
 const { Option } = Select;
 
 const Factory = () => {
+  const { isReadonly, showTip } = useReadonly();
   const [factories, setFactories] = useState<FactoryType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -33,6 +36,10 @@ const Factory = () => {
   };
 
   const showAddModal = () => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setIsEdit(false);
     setCurrentFactory(null);
     form.resetFields();
@@ -40,6 +47,10 @@ const Factory = () => {
   };
 
   const showEditModal = (factory: FactoryType) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setIsEdit(true);
     setCurrentFactory(factory);
     form.setFieldsValue(factory);
@@ -73,6 +84,10 @@ const Factory = () => {
   };
 
   const handleDelete = (id: string) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     Modal.confirm({
       title: '确认删除',
       content: '确定要删除这个厂区吗？删除后不可恢复。',
@@ -101,8 +116,12 @@ const Factory = () => {
       key: 'action', 
       render: (_: any, record: FactoryType) => (
         <Space size="middle">
-          <Button type="primary" icon={<EditOutlined />} size="small" onClick={() => showEditModal(record)}>编辑</Button>
-          <Button danger icon={<DeleteOutlined />} size="small" onClick={() => handleDelete(record.id)}>删除</Button>
+          <BizAction type="primary" icon={<EditOutlined />} size="small" onClick={() => showEditModal(record)}>
+            编辑
+          </BizAction>
+          <BizAction danger icon={<DeleteOutlined />} size="small" onClick={() => handleDelete(record.id)}>
+            删除
+          </BizAction>
         </Space>
       ),
     },
@@ -112,9 +131,9 @@ const Factory = () => {
     <div className="page-container">
       <div className="page-header">
         <h1>厂区管理</h1>
-        <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
+        <BizAction type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
           新建厂区
-        </Button>
+        </BizAction>
       </div>
       
       <Card title="厂区列表" variant="outlined">
