@@ -8,7 +8,8 @@ import {
   message,
   Typography,
   Grid,
-  Drawer
+  Drawer,
+  Alert
 } from 'antd';
 import Select from 'antd/es/select';
 import {
@@ -34,6 +35,8 @@ import { useFactoryStore } from '../stores/factoryStore';
 import { authApi } from '../services/auth';
 import { factoryApi } from '../services/factory';
 import './MainLayout.css';
+import { ReadonlyProvider } from '../contexts/ReadonlyContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const { Header, Sider, Content } = Layout;
 
@@ -41,6 +44,7 @@ const { Title } = Typography;
 
 const MainLayout: React.FC = () => {
   const screens = Grid.useBreakpoint();
+  const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
@@ -148,9 +152,27 @@ const MainLayout: React.FC = () => {
     if (!screens.lg) closeDrawer();
   };
 
+  const isReadonlyRoute = useMemo(() => {
+    const p = location.pathname;
+    return (
+      p.startsWith('/factory') ||
+      p.startsWith('/capacity') ||
+      p.startsWith('/template-library') ||
+      p.startsWith('/salary') ||
+      p.startsWith('/personnel') ||
+      p.startsWith('/department') ||
+      p.startsWith('/logistics') ||
+      p.startsWith('/attendance') ||
+      p.startsWith('/schedule')
+    );
+  }, [location.pathname]);
+
+  const isMobileReadonly = isMobile && isReadonlyRoute;
+
   /* ----------------------------- 渲染 ----------------------------- */
   return (
-    <Layout className="main-layout">
+    <ReadonlyProvider isReadonly={isMobileReadonly}>
+      <Layout className="main-layout">
       {screens.lg && (
         <Sider
           collapsible
@@ -249,10 +271,20 @@ const MainLayout: React.FC = () => {
         </Header>
 
         <Content className="main-content">
+          {isMobileReadonly && (
+            <Alert
+              message="该业务操作请在电脑端网页完成"
+              type="info"
+              showIcon
+              banner
+              style={{ marginBottom: 12 }}
+            />
+          )}
           <Outlet />
         </Content>
       </Layout>
     </Layout>
+    </ReadonlyProvider>
   );
 };
 
