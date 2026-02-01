@@ -43,6 +43,13 @@ jobs:
           tar -czf dist.tar.gz -C dist .
 
       # 5. 上传文件到服务器
+      - name: Preflight - SSH handshake check
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -vvv ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo SSH_OK"
+
       - name: Upload dist.tar.gz to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -52,6 +59,10 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           source: "dist.tar.gz"
           target: "/tmp"
+          timeout: 120s
+          command_timeout: 120s
+          debug: true
+          use_insecure_cipher: true
 
       # 6. 在服务器端清空目标目录并解压新文件
       - name: Deploy on server via SSH
