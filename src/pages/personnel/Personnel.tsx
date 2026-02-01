@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Table, Space, Modal, Form, Input, message, Spin, Select, Tag, Alert } from 'antd';
+import { Card, Button, Space, Modal, Form, Input, message, Spin, Select, Tag, Alert } from 'antd';
 import BatchImportModal from '../../components/BatchImportModal';
+import ResponsiveDataList from '../../components/ResponsiveDataList';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
 
@@ -356,11 +357,31 @@ const Personnel = () => {
       {/* 移除variant="outlined"属性，兼容Ant Design v4 */}
       <Card title="员工列表">
         <Spin spinning={loading}>
-          <Table 
-            columns={columns} 
-            dataSource={filteredEmployees} 
-            rowKey="id" 
-            pagination={{ pageSize: 10 }} 
+          <ResponsiveDataList
+            columns={columns}
+            dataSource={filteredEmployees}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            onRowClick={(record) => {
+              navigate(`/personnel/${record.id}`);
+            }}
+            mobileRenderItem={(record) => (
+              <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Space size={6}>
+                    <UserOutlined />
+                    <div style={{ fontWeight: 600 }}>{record.name}</div>
+                  </Space>
+                  {record.departmentName ? (
+                    <Tag color="blue">{record.departmentName}</Tag>
+                  ) : (
+                    <Tag color="default">未分配</Tag>
+                  )}
+                </Space>
+                <div style={{ fontSize: 12, color: '#666' }}>员工ID：{record.employeeId || '-'}</div>
+                <div style={{ fontSize: 12, color: '#666' }}>电话：{record.phone || '-'}</div>
+              </Space>
+            )}
           />
         </Spin>
       </Card>
