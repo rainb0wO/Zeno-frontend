@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Card, Table, Space, Modal, Form, Input, Select, message, Progress } from 'antd';
+import { Card, Space, Modal, Form, Input, Select, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { factoryApi } from '../../services/factory';
 import type { Factory as FactoryType, CreateFactoryParams } from '../../services/factory';
 import BizAction from '../../components/BizAction';
 import { useReadonly } from '../../contexts/ReadonlyContext';
+import ResponsiveDataList from '../../components/ResponsiveDataList';
+import { useNavigate } from 'react-router-dom';
 
 const { Option } = Select;
 
 const Factory = () => {
   const { isReadonly, showTip } = useReadonly();
+  const navigate = useNavigate();
   const [factories, setFactories] = useState<FactoryType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -137,12 +140,25 @@ const Factory = () => {
       </div>
       
       <Card title="厂区列表" variant="outlined">
-        <Table 
-          columns={columns} 
-          dataSource={factories} 
-          rowKey="id" 
+        <ResponsiveDataList
+          columns={columns}
+          dataSource={factories}
+          rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10 }} 
+          pagination={{ pageSize: 10 }}
+          onRowClick={(record) => {
+            navigate(`/factory/${record.id}`);
+          }}
+          mobileRenderItem={(record) => (
+            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+              <div style={{ fontWeight: 600 }}>{record.name}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>联系人：{record.contactPerson}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>电话：{record.contactPhone}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>
+                地址：{record.address}
+              </div>
+            </Space>
+          )}
         />
       </Card>
       
