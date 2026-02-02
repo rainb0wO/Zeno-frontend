@@ -23,25 +23,19 @@ const Department: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [parentId, setParentId] = useState<string | null>(null);
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
 
   const isMobileView = !screens.md;
 
   const {
     departments,
     showDeleted,
-    loading,
     setDepartments,
     setShowDeleted,
     setLoading,
-    updateDepartmentInTree,
-    removeDepartmentFromTree,
-    addDepartmentToTree,
   } = useDepartmentStore();
 
   const { currentFactory } = useFactoryStore();
   const { hasRole } = useUserStore();
-  const isSuperAdmin = hasRole('super_admin');
 
   // 加载部门树
   const loadDepartments = async () => {
@@ -49,13 +43,18 @@ const Department: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await departmentApi.getDepartments({
+      const response: any = await departmentApi.getDepartments({
         factoryId: currentFactory.id,
         includeDeleted: showDeleted,
       });
-      
-      // 将扁平列表转换为树形结构
-      const tree = buildTree(response.departments || []);
+
+      const list: Department[] =
+        response?.departments?.items ||
+        response?.departments ||
+        response?.department ||
+        [];
+
+      const tree = buildTree(list);
       setDepartments(tree);
     } catch (error: any) {
       console.error('加载部门列表失败:', error);
@@ -70,24 +69,34 @@ const Department: React.FC = () => {
     const map = new Map<string, Department>();
     const roots: Department[] = [];
 
-    // 创建映射
-    list.forEach(dept => {
+    const normalizeParentId = (v: unknown): string | null => {
+      if (v === null || v === undefined) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      if (s.toLowerCase() === 'null') return null;
+      if (s === '0') return null;
+      return s;
+    };
+
+    list.forEach((dept) => {
       map.set(dept.id, { ...dept, children: [] });
     });
 
-    // 构建树
-    list.forEach(dept => {
+    list.forEach((dept) => {
       const node = map.get(dept.id)!;
-      if (!dept.parentId) {
+      const pid = normalizeParentId((dept as any).parentId);
+
+      if (!pid) {
         roots.push(node);
+        return;
+      }
+
+      const parent = map.get(pid);
+      if (parent) {
+        parent.children = parent.children || [];
+        parent.children.push(node);
       } else {
-        const parent = map.get(dept.parentId);
-        if (parent) {
-          if (!parent.children) parent.children = [];
-          parent.children.push(node);
-        } else {
-          roots.push(node);
-        }
+        roots.push(node);
       }
     });
 
@@ -384,9 +393,9 @@ const Department: React.FC = () => {
                 placeholder="请选择负责人"
                 allowClear
                 showSearch
-                optionFilterProp="children"
+                optionFilterProp="label"
                 filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
               >
                 {employees.map(emp => (
