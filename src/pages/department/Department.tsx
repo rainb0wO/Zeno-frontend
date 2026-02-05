@@ -11,7 +11,7 @@ import type { Department } from '../../services/department';
 import { departmentApi } from '../../services/department';
 import { useDepartmentStore } from '../../stores/departmentStore';
 import { useFactoryStore } from '../../stores/factoryStore';
-import { useUserStore } from '../../stores/userStore';
+
 import personnelApi from '../../services/personnel';
 
 const { Content, Sider } = Layout;
@@ -35,7 +35,6 @@ const Department: React.FC = () => {
   } = useDepartmentStore();
 
   const { currentFactory } = useFactoryStore();
-  const { hasRole } = useUserStore();
 
   // 加载部门树
   const loadDepartments = async () => {
