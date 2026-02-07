@@ -32,7 +32,7 @@ export type DashboardOverview = {
 
 export const dashboardApi = {
   getOverview: (): Promise<DashboardOverview> => {
-    return get<DashboardOverview>('/api/dashboard/overview');
+    return get<DashboardOverview>('/dashboard/overview');
   },
 };
 
