@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Switch, Space, Modal, Form, Input, message, Select, Button, Grid } from 'antd';
+import { Layout, Card, Switch, Space, Modal, Form, Input, App, Select, Button, Grid } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useReadonly } from '../../contexts/ReadonlyContext';
 import DepartmentMobile from './DepartmentMobile';
@@ -19,6 +19,7 @@ const { Content, Sider } = Layout;
 const Department: React.FC = () => {
   const screens = Grid.useBreakpoint();
   const { isReadonly, showTip } = useReadonly();
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import './App.css';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -49,8 +49,9 @@ import TemplateLibrary from './pages/TemplateLibrary';
 function App() {
   return (
     <ConfigProvider locale={zhCN}>
-      <Router>
-        <Routes>
+      <AntdApp>
+        <Router>
+          <Routes>
           {/* 认证路由 */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -84,7 +85,8 @@ function App() {
           {/* 404路由 */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
+        </Router>
+      </AntdApp>
     </ConfigProvider>
   );
 }
