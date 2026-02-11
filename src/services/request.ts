@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { isMobileRuntime } from '../utils/platform';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { message } from 'antd';
+// import { message } from 'antd';
 
 // API基础URL
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';

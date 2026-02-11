@@ -37,9 +37,9 @@ const Dashboard = () => {
   }, [loadOverview]);
 
   const salaryParts = useMemo(() => {
-    const base = data?.salary.base ?? 0;
-    const bonus = data?.salary.bonus ?? 0;
-    const allowance = data?.salary.allowance ?? 0;
+    const base = data?.salary?.base ?? 0;
+    const bonus = data?.salary?.bonus ?? 0;
+    const allowance = data?.salary?.allowance ?? 0;
     const total = base + bonus + allowance;
 
     const safeRate = (v: number) => (total > 0 ? (v / total) * 100 : 0);
