@@ -64,6 +64,22 @@ const DroppableTreeNode: React.FC<{
   );
 };
 
+// 计算部门及其所有子部门的总人数
+const getTotalEmployeeCount = (dept: Department): number => {
+  const directCount =
+    (dept as any)?._count?.employees ??
+    (Array.isArray((dept as any).employees) ? (dept as any).employees.length : undefined) ??
+    (dept as any).employeeCount ??
+    0;
+
+  const childrenCount = (dept.children || []).reduce(
+    (acc, child) => acc + getTotalEmployeeCount(child),
+    0
+  );
+
+  return directCount + childrenCount;
+};
+
 // 将部门数据转换为 Tree 的 DataNode 格式
 const convertToTreeData = (
   departments: Department[],
@@ -71,15 +87,11 @@ const convertToTreeData = (
   onDropEmployee: (employeeIds: string[], departmentId: string) => void
 ): DataNode[] => {
   return departments
-    .filter(dept => showDeleted || !dept.deletedAt)
-    .map(dept => {
+    .filter((dept) => showDeleted || !dept.deletedAt)
+    .map((dept) => {
       const isDeleted = !!dept.deletedAt;
-      const count =
-        (dept as any)?._count?.employees ??
-        (Array.isArray((dept as any).employees) ? (dept as any).employees.length : undefined) ??
-        (dept as any).employeeCount ??
-        0;
-      
+      const count = getTotalEmployeeCount(dept);
+
       return {
         key: dept.id,
         title: (
@@ -90,12 +102,18 @@ const convertToTreeData = (
           >
             <span style={{ color: isDeleted ? '#aaa' : undefined }}>
               {dept.name}
-              {isDeleted && <Tag color="error" style={{ marginLeft: 8 }}>已删除</Tag>}
+              {isDeleted && (
+                <Tag color="error" style={{ marginLeft: 8 }}>
+                  已删除
+                </Tag>
+              )}
               <Tag style={{ marginLeft: 8 }}>{count} 人</Tag>
             </span>
           </DroppableTreeNode>
         ),
-        children: dept.children ? convertToTreeData(dept.children, showDeleted, onDropEmployee) : undefined,
+        children: dept.children
+          ? convertToTreeData(dept.children, showDeleted, onDropEmployee)
+          : undefined,
         isLeaf: !dept.children || dept.children.length === 0,
         disabled: isDeleted && !showDeleted,
         data: dept,
