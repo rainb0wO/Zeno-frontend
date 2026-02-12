@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Table, Space, DatePicker, Statistic, Row, Col, message, Spin } from 'antd';
-import { PlusOutlined, EditOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Card, Button, Space, DatePicker, Statistic, Row, Col, message, Spin, Empty, Tag, Descriptions, Pagination } from 'antd';
+import { PlusOutlined, EditOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import attendanceApi from '../../services/attendance';
 import { useUserStore } from '../../stores/userStore';
@@ -160,7 +160,60 @@ const Attendance = () => {
 
       <Card title="考勤记录">
         <Spin spinning={loading}>
-          <Table rowKey="id" columns={columns} dataSource={records} pagination={{ pageSize: 10 }} />
+          {records.length === 0 ? (
+            <Empty description="暂无考勤记录" />
+          ) : (
+            <Row gutter={[16, 16]}>
+              {records.map((record) => {
+                const statusMap: Record<string, { color: string; text: string; icon: React.ReactNode }> = {
+                  PRESENT: { color: 'success', text: '正常', icon: <CheckOutlined style={{ color: '#3f8600' }} /> },
+                  LATE: { color: 'warning', text: '迟到', icon: <ClockCircleOutlined style={{ color: '#faad14' }} /> },
+                  EARLY_LEAVE: { color: 'warning', text: '早退', icon: <ClockCircleOutlined style={{ color: '#faad14' }} /> },
+                  ABSENT: { color: 'error', text: '缺勤', icon: <CloseOutlined style={{ color: '#cf1322' }} /> },
+                };
+                const cfg = statusMap[record.status] || { color: 'default', text: record.status || '-', icon: null };
+
+                return (
+                  <Col key={record.id} xs={24} sm={24} md={12} lg={8} xl={6}>
+                    <Card hoverable styles={{ body: { padding: 16 } }}>
+                      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Space size={6} style={{ minWidth: 0 }}>
+                            <UserOutlined />
+                            <div style={{ fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {record.name || '-'}
+                            </div>
+                          </Space>
+                          <Tag color={cfg.color}>
+                            <Space size={4}>
+                              {cfg.icon}
+                              <span>{cfg.text}</span>
+                            </Space>
+                          </Tag>
+                        </Space>
+
+                        <Descriptions
+                          column={2}
+                          size="small"
+                          styles={{ itemLabel: { width: 56, whiteSpace: 'nowrap' }, itemContent: { minWidth: 0 } }}
+                        >
+                          <Descriptions.Item label="日期" span={2}>{record.date || '-'}</Descriptions.Item>
+                          <Descriptions.Item label="上班">{record.checkInTime || '-'}</Descriptions.Item>
+                          <Descriptions.Item label="下班">{record.checkOutTime || '-'}</Descriptions.Item>
+                          <Descriptions.Item label="工时">{`${record.workHours || 0}小时`}</Descriptions.Item>
+                          <Descriptions.Item label="电话">{record.phone || '-'}</Descriptions.Item>
+                        </Descriptions>
+
+                        <Space wrap size="small">
+                          <Button size="small" icon={<EditOutlined />}>编辑</Button>
+                        </Space>
+                      </Space>
+                    </Card>
+                  </Col>
+                );
+              })}
+            </Row>
+          )}
         </Spin>
       </Card>
     </div>

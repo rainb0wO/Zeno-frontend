@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
 import { Alert, Button, Card, DatePicker, Progress, Row, Col, Skeleton, Space, Statistic, Typography } from 'antd';
 import {
   ArrowDownOutlined,
@@ -15,12 +16,15 @@ import './Dashboard.css';
 const { Title, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
 
+type RangeValue = [Dayjs, Dayjs];
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashboardOverview | null>(null);
 
-    const [range, setRange] = useState<[string, string] | null>(null);
+  const [range, setRange] = useState<[string, string] | null>(null);
+  const [rangeValue, setRangeValue] = useState<RangeValue | null>(null);
 
   const loadOverview = useCallback(
     async (nextRange?: [string, string] | null) => {
@@ -84,12 +88,15 @@ const Dashboard = () => {
             size="small"
             className="dashboard-range"
             allowClear
+            value={rangeValue as any}
             onChange={(dates) => {
               if (!dates || dates.length !== 2 || !dates[0] || !dates[1]) {
+                setRangeValue(null);
                 setRange(null);
                 loadOverview(null);
                 return;
               }
+              setRangeValue(dates as any);
               const next: [string, string] = [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')];
               setRange(next);
               loadOverview(next);
@@ -129,7 +136,7 @@ const Dashboard = () => {
                 <Statistic
                   value={data?.employee?.total ?? 0}
                   formatter={(v) => formatNumber(Number(v))}
-                  styles={{ content: { color: '#52c41a', fontSize: '32px', fontWeight: '600' } }}
+                  styles={{ content: { color: '#1890ff', fontSize: '34px', fontWeight: '700' } }}
                   suffix={renderTrend(data?.employee?.momGrowthRate ?? 0)}
                 />
               )}
@@ -157,7 +164,7 @@ const Dashboard = () => {
                   value={(data?.capacity?.todayRate ?? 0) * 100}
                   precision={1}
                   suffix="%"
-                  styles={{ content: { color: '#1890ff', fontSize: '32px', fontWeight: '600' } }}
+                  styles={{ content: { color: '#1890ff', fontSize: '34px', fontWeight: '700' } }}
                 />
               )}
               <div className="metric-description">
@@ -194,7 +201,7 @@ const Dashboard = () => {
                 <Statistic
                   value={data?.salary?.monthTotal ?? 0}
                   formatter={(v) => formatCNY(Number(v))}
-                  styles={{ content: { color: '#fa8c16', fontSize: '32px', fontWeight: '600' } }}
+                  styles={{ content: { color: '#1890ff', fontSize: '34px', fontWeight: '700' } }}
                   suffix={renderTrend(data?.salary?.momGrowthRate ?? 0)}
                 />
               )}
@@ -222,7 +229,7 @@ const Dashboard = () => {
                   value={(data?.attendance?.todayRate ?? 0) * 100}
                   precision={1}
                   suffix="%"
-                  styles={{ content: { color: '#722ed1', fontSize: '32px', fontWeight: '600' } }}
+                  styles={{ content: { color: '#1890ff', fontSize: '34px', fontWeight: '700' } }}
                 />
               )}
               <div className="metric-description">
