@@ -3,10 +3,12 @@ import { Card, Button, Table, Space, DatePicker, Statistic, Row, Col, message, S
 import { PlusOutlined, EditOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import attendanceApi from '../../services/attendance';
+import { useUserStore } from '../../stores/userStore';
 
 const { RangePicker } = DatePicker;
 
 const Attendance = () => {
+  const { user } = useUserStore();
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,7 @@ const Attendance = () => {
 
   useEffect(() => {
     fetchRecords();
-  }, [dateRange]);
+  }, [dateRange, user?.factoryId]);
 
   const summary = useMemo(() => {
     const statusCount: Record<string, number> = {

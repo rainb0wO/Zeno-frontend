@@ -63,6 +63,11 @@ export const authApi = {
     return get<{ user: User }>('/auth/me');
   },
 
+  // 切换当前厂区
+  switchFactory: (factoryId: string): Promise<{ user: User; message: string }> => {
+    return post<{ user: User; message: string }>('/auth/switch-factory', { factoryId });
+  },
+
   // 退出登录
   logout: (): void => {
     localStorage.removeItem('token');

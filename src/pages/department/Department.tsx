@@ -11,12 +11,14 @@ import type { Department } from '../../services/department';
 import { departmentApi } from '../../services/department';
 import { useDepartmentStore } from '../../stores/departmentStore';
 import { useFactoryStore } from '../../stores/factoryStore';
+import { useUserStore } from '../../stores/userStore';
 
 import personnelApi from '../../services/personnel';
 
 const { Content, Sider } = Layout;
 
 const Department: React.FC = () => {
+  const { user } = useUserStore();
   const screens = Grid.useBreakpoint();
   const { isReadonly, showTip } = useReadonly();
   const { message } = App.useApp();
@@ -320,7 +322,7 @@ const Department: React.FC = () => {
       }
     };
     fetchEmployees();
-  }, []);
+  }, [user?.factoryId]);
 
   if (isMobileView) {
     return <DepartmentMobile departments={departments} showDeleted={showDeleted} />;

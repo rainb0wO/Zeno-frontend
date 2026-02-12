@@ -107,12 +107,21 @@ const MainLayout: React.FC = () => {
   };
 
   const handleFactoryChange = useCallback(
-    (factoryId: string) => {
+    async (factoryId: string) => {
       const factory = factories.find(f => f.id === factoryId);
-      if (factory) {
+      if (!factory) return;
+
+      try {
+        const res = await authApi.switchFactory(factoryId);
+
+        // 以服务端返回的 user.factoryId 为准
+        updateFactoryId(res.user.factoryId || factoryId);
         setCurrentFactory(factory);
-        updateFactoryId(factoryId);
-        message.success(`已切换到${factory.name}`);
+
+        message.success(res.message || `已切换到${factory.name}`);
+      } catch (error) {
+        console.error('切换厂区失败:', error);
+        message.error('切换厂区失败，请稍后重试');
       }
     },
     [factories, setCurrentFactory, updateFactoryId]

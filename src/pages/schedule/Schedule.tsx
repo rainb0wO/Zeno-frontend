@@ -9,11 +9,13 @@ import dayjs, { Dayjs } from 'dayjs';
 import scheduleAPI, { type Schedule } from '../../services/schedule';
 import factoryAPI from '../../services/factory';
 import personnelApi from '../../services/personnel';
+import { useUserStore } from '../../stores/userStore';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const SchedulePage: React.FC = () => {
+  const { user } = useUserStore();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(false);
   const [factories, setFactories] = useState<any[]>([]);
@@ -36,7 +38,7 @@ const SchedulePage: React.FC = () => {
 
   useEffect(() => {
     loadFactories();
-  }, []);
+  }, [user?.factoryId]);
 
   useEffect(() => {
     if (selectedFactory) {
@@ -51,9 +53,10 @@ const SchedulePage: React.FC = () => {
       const response = await factoryAPI.getFactories();
       const data = response.factories || [];
       setFactories(data);
-      if (data.length > 0) {
-        setSelectedFactory(data[0].id);
-      }
+
+      // 优先使用当前登录用户的 factoryId（方案B），否则回退第一个厂区
+      const nextFactoryId = user?.factoryId || (data.length > 0 ? data[0].id : '');
+      setSelectedFactory(nextFactoryId);
     } catch (error) {
       message.error('加载工厂列表失败');
     }

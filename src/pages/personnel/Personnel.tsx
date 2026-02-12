@@ -6,10 +6,11 @@ import BatchImportModal from '../../components/BatchImportModal';
 import ResponsiveDataList from '../../components/ResponsiveDataList';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
-
+import { useUserStore } from '../../stores/userStore';
 
 
 const Personnel = () => {
+  const { user } = useUserStore();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<any[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -132,7 +133,7 @@ const Personnel = () => {
   
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [user?.factoryId]);
   
   // 过滤员工数据 - 使用useMemo缓存，提高性能
   const filteredEmployees = useMemo(() => {
