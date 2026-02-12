@@ -127,20 +127,20 @@ const Dashboard = () => {
                 <Skeleton active paragraph={false} />
               ) : (
                 <Statistic
-                  value={(data?.capacity.todayRate ?? 0) * 100}
+                  value={(data?.capacity?.todayRate ?? 0) * 100}
                   precision={1}
                   suffix="%"
                   styles={{ content: { color: '#1890ff', fontSize: '32px', fontWeight: '600' } }}
                 />
               )}
               <div className="metric-description">
-                目标完成率 {loading ? '--' : formatPercent(data?.capacity.todayRate ?? 0)}
-                {data?.capacity.todayPlan !== undefined && data?.capacity.todayActual !== undefined
+                目标完成率 {loading ? '--' : formatPercent(data?.capacity?.todayRate ?? 0)}
+                {data?.capacity?.todayPlan !== undefined && data?.capacity?.todayActual !== undefined
                   ? `（${formatNumber(data.capacity.todayActual)}/${formatNumber(data.capacity.todayPlan)}）`
                   : ''}
               </div>
               <Progress
-                percent={(data?.capacity.todayRate ?? 0) * 100}
+                percent={(data?.capacity?.todayRate ?? 0) * 100}
                 strokeColor={{
                   '0%': '#91d5ff',
                   '100%': '#1890ff',
@@ -165,15 +165,15 @@ const Dashboard = () => {
                 <Skeleton active paragraph={false} />
               ) : (
                 <Statistic
-                  value={data?.salary.monthTotal ?? 0}
+                  value={data?.salary?.monthTotal ?? 0}
                   formatter={(v) => formatCNY(Number(v))}
                   styles={{ content: { color: '#fa8c16', fontSize: '32px', fontWeight: '600' } }}
-                  suffix={renderTrend(data?.salary.momGrowthRate ?? 0, '#fa8c16')}
+                  suffix={renderTrend(data?.salary?.momGrowthRate ?? 0, '#fa8c16')}
                 />
               )}
               <div className="metric-description">
-                较上月{data?.salary.momGrowthRate !== undefined && data.salary.momGrowthRate >= 0 ? '增长' : '下降'}{' '}
-                {loading ? '--' : formatPercent(Math.abs(data?.salary.momGrowthRate ?? 0))}
+                较上月{data?.salary?.momGrowthRate !== undefined && (data?.salary?.momGrowthRate ?? 0) >= 0 ? '增长' : '下降'}{' '}
+                {loading ? '--' : formatPercent(Math.abs(data?.salary?.momGrowthRate ?? 0))}
               </div>
             </div>
           </Card>
@@ -192,17 +192,17 @@ const Dashboard = () => {
                 <Skeleton active paragraph={false} />
               ) : (
                 <Statistic
-                  value={(data?.attendance.todayRate ?? 0) * 100}
+                  value={(data?.attendance?.todayRate ?? 0) * 100}
                   precision={1}
                   suffix="%"
                   styles={{ content: { color: '#722ed1', fontSize: '32px', fontWeight: '600' } }}
                 />
               )}
               <div className="metric-description">
-                应到/实到 {loading ? '--' : `${formatNumber(data?.attendance.shouldAttend ?? 0)}/${formatNumber(data?.attendance.actualAttend ?? 0)}`}
+                应到/实到 {loading ? '--' : `${formatNumber(data?.attendance?.shouldAttend ?? 0)}/${formatNumber(data?.attendance?.actualAttend ?? 0)}`}
               </div>
               <Progress
-                percent={(data?.attendance.todayRate ?? 0) * 100}
+                percent={(data?.attendance?.todayRate ?? 0) * 100}
                 strokeColor={{
                   '0%': '#d3adf7',
                   '100%': '#722ed1',
