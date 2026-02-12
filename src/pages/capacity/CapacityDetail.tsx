@@ -84,18 +84,16 @@ const CapacityDetail = () => {
             </Descriptions>
 
             <Space>
-              <Button
-                type="primary"
-                onClick={() => {
-                  if (isReadonly) {
-                    showTip();
-                    return;
-                  }
-                  message.info('编辑功能待接入');
-                }}
-              >
-                编辑
-              </Button>
+              {!isReadonly && (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    navigate(`/capacity?edit=${id}`);
+                  }}
+                >
+                  编辑
+                </Button>
+              )}
             </Space>
           </Space>
         )}
