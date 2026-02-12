@@ -261,19 +261,78 @@ const Personnel = () => {
     setIsModalVisible(true);
   };
 
+  // 扁平化部门树用于反查
+  const deptMap = useMemo(() => {
+    const map = new Map<string, any>();
+    const flatten = (list: any[]) => {
+      list.forEach((item) => {
+        map.set(item.id, item);
+        if (item.children) flatten(item.children);
+      });
+    };
+    flatten(departments);
+    return map;
+  }, [departments]);
+
+  // 根据部门ID反查 部门-组-岗位 路径
+  const getDeptPath = (deptId: string) => {
+    if (!deptId || !deptMap.has(deptId)) return { dept: null, group: null, post: null };
+    
+    const node3 = deptMap.get(deptId); // 可能是岗位、组或部门
+    const node2 = node3?.parentId ? deptMap.get(node3.parentId) : null;
+    const node1 = node2?.parentId ? deptMap.get(node2.parentId) : null;
+
+    // 根据深度判断（depth属性已在DepartmentTree中计算，但在API返回的原始list中没有，我们根据parentId回溯）
+    // 岗位(333) -> 组(2222) -> 部门(aaa)
+    if (node1) {
+      return { dept: node1.name, group: node2?.name, post: node3.name };
+    } else if (node2) {
+      return { dept: node2.name, group: node3.name, post: null };
+    } else {
+      return { dept: node3.name, group: null, post: null };
+    }
+  };
+
   const columns = [
     { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId' },
-    { title: '姓名', dataIndex: 'name', key: 'name', render: (name: string) => <Space><UserOutlined />{name}</Space> },
+    {
+      title: '姓名',
+      dataIndex: 'name',
+      key: 'name',
+      render: (name: string) => (
+        <Space>
+          <UserOutlined />
+          {name}
+        </Space>
+      ),
+    },
     { title: '联系电话', dataIndex: 'phone', key: 'phone' },
     {
       title: '部门',
-      dataIndex: 'departmentName',
-      key: 'department',
-      render: (departmentName: string, record: any) => {
-        if (departmentName) {
-          return departmentName;
-        }
-        return <Tag color="default">未分配</Tag>;
+      dataIndex: 'departmentId',
+      key: 'dept',
+      render: (deptId: string) => {
+        const { dept } = getDeptPath(deptId);
+        return dept || <Tag color="default">未分配</Tag>;
+      },
+    },
+    {
+      title: '组',
+      dataIndex: 'departmentId',
+      key: 'group',
+      render: (deptId: string) => {
+        const { group } = getDeptPath(deptId);
+        return group || '-';
+      },
+    },
+    {
+      title: '岗位',
+      dataIndex: 'departmentId',
+      key: 'post',
+      render: (deptId: string) => {
+        const { post } = getDeptPath(deptId);
+        // 如果只有一层，则岗位显示为'-'或部门名，按需调整
+        return post || '-';
       },
     },
     {
