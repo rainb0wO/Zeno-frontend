@@ -41,8 +41,14 @@
 }
 
 /* 关键指标卡片 */
+.dashboard-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .dashboard-metrics {
-  margin-bottom: 32px;
+  margin-bottom: 0;
   width: 100%;
 }
 
@@ -122,7 +128,7 @@
 
 /* 详细数据卡片 */
 .dashboard-details {
-  margin-bottom: 24px;
+  margin-bottom: 0;
   width: 100%;
 }
 

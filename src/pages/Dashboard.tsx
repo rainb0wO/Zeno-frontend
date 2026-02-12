@@ -120,6 +120,7 @@ const Dashboard = () => {
         />
       )}
 
+      <div className="dashboard-sections">
       <Row gutter={[24, 24]} className="dashboard-metrics">
         <Col xs={24} sm={12} md={6}>
           <Card className="metric-card employee-card">
@@ -350,6 +351,7 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
+      </div>
     </div>
   );
 };
