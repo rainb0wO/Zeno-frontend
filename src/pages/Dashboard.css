@@ -41,14 +41,19 @@
 }
 
 /* 关键指标卡片 */
+:root {
+  --dashboard-section-gap: 40px;
+}
+
 .dashboard-sections {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--dashboard-section-gap);
+  padding-bottom: var(--dashboard-section-gap);
 }
 
 .dashboard-metrics {
-  margin-bottom: 0;
+  margin-bottom: 0 !important;
   width: 100%;
 }
 
