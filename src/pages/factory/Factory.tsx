@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useFactoryStore } from '../../stores/factoryStore';
 import { Card, Button, Table, Space, Modal, Form, Input, Select, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { factoryApi } from '../../services/factory';
@@ -7,6 +8,7 @@ import type { Factory as FactoryType, CreateFactoryParams } from '../../services
 const { Option } = Select;
 
 const Factory = () => {
+  const { setFactories: setGlobalFactories } = useFactoryStore();
   const [factories, setFactories] = useState<FactoryType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -24,6 +26,7 @@ const Factory = () => {
     try {
       const response = await factoryApi.getFactories();
       setFactories(response.factories);
+      setGlobalFactories(response.factories);
     } catch (error) {
       console.error('获取厂区列表失败:', error);
       message.error('获取厂区列表失败');
