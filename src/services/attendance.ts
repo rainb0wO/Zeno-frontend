@@ -54,8 +54,10 @@ export const attendanceApi = {
     employeeId?: string;
     date?: string;
     status?: string;
-  }): Promise<{ attendanceRecords: AttendanceRecord[] }> => {
-    return get<{ attendanceRecords: AttendanceRecord[] }>('/attendance', params);
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ attendanceRecords: AttendanceRecord[]; total?: number; page?: number; pageSize?: number }> => {
+    return get<{ attendanceRecords: AttendanceRecord[]; total?: number; page?: number; pageSize?: number }>('/attendance', params);
   },
 
   // 获取考勤记录详情

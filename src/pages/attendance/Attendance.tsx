@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Space, DatePicker, Statistic, Row, Col, message, Spin, Empty, Tag, Descriptions, Pagination } from 'antd';
 import { PlusOutlined, EditOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
@@ -11,18 +11,25 @@ const Attendance = () => {
   const { user } = useUserStore();
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [records, setRecords] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
 
-  const fetchRecords = async () => {
+  const fetchRecords = async (currentPage = page, currentPageSize = pageSize) => {
     setLoading(true);
     try {
-      const params: any = {};
+      const params: any = {
+        page: currentPage,
+        pageSize: currentPageSize
+      };
       if (dateRange) {
         params.startDate = dateRange[0].format('YYYY-MM-DD');
         params.endDate = dateRange[1].format('YYYY-MM-DD');
       }
       const res = await attendanceApi.getAttendanceRecords(params);
       setRecords(res.attendanceRecords || []);
+      setTotal(res.total || 0);
     } catch (e: any) {
       console.error(e);
       message.error('获取考勤数据失败');
@@ -32,7 +39,8 @@ const Attendance = () => {
   };
 
   useEffect(() => {
-    fetchRecords();
+    fetchRecords(1); // 重置到第一页
+    setPage(1);
   }, [dateRange, user?.factoryId]);
 
   const summary = useMemo(() => {
@@ -163,8 +171,9 @@ const Attendance = () => {
           {records.length === 0 ? (
             <Empty description="暂无考勤记录" />
           ) : (
+            <>
             <Row gutter={[16, 16]}>
-              {records.map((record) => {
+              {records.map((record: any) => {
                 const statusMap: Record<string, { color: string; text: string; icon: React.ReactNode }> = {
                   PRESENT: { color: 'success', text: '正常', icon: <CheckOutlined style={{ color: '#3f8600' }} /> },
                   LATE: { color: 'warning', text: '迟到', icon: <ClockCircleOutlined style={{ color: '#faad14' }} /> },
@@ -198,8 +207,8 @@ const Attendance = () => {
                           styles={{ itemLabel: { width: 56, whiteSpace: 'nowrap' }, itemContent: { minWidth: 0 } }}
                         >
                           <Descriptions.Item label="日期" span={2}>{record.date || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="上班">{record.checkInTime || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="下班">{record.checkOutTime || '-'}</Descriptions.Item>
+                          <Descriptions.Item label="上班">{record.clockIn || '-'}</Descriptions.Item>
+                          <Descriptions.Item label="下班">{record.clockOut || '-'}</Descriptions.Item>
                           <Descriptions.Item label="工时">{`${record.workHours || 0}小时`}</Descriptions.Item>
                           <Descriptions.Item label="电话">{record.phone || '-'}</Descriptions.Item>
                         </Descriptions>
@@ -213,6 +222,20 @@ const Attendance = () => {
                 );
               })}
             </Row>
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+              <Pagination
+                current={page}
+                pageSize={pageSize}
+                total={total}
+                showSizeChanger
+                onChange={(nextPage, nextPageSize) => {
+                  setPage(nextPage);
+                  setPageSize(nextPageSize);
+                  fetchRecords(nextPage, nextPageSize);
+                }}
+              />
+            </div>
+            </>
           )}
         </Spin>
       </Card>
