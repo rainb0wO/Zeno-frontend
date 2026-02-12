@@ -56,8 +56,7 @@ const Department: React.FC = () => {
         response?.department ||
         [];
 
-      const tree = buildTree(list);
-      setDepartments(tree);
+      setDepartments(list);
     } catch (error: any) {
       console.error('加载部门列表失败:', error);
       message.error('加载部门列表失败');
