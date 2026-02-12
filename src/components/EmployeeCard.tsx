@@ -6,6 +6,7 @@ import type { Employee } from '../services/personnel';
 
 interface EmployeeCardProps {
   employee: Employee;
+  departmentPath?: string;
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   selectedIds?: Set<string>; // 多选时传入已选ID集合
@@ -13,6 +14,7 @@ interface EmployeeCardProps {
 
 const EmployeeCard: React.FC<EmployeeCardProps> = ({
   employee,
+  departmentPath,
   isSelected = false,
   onSelect,
   selectedIds,
@@ -54,6 +56,11 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
           <div style={{ fontWeight: 500 }}>{employee.name}</div>
           {employee.employeeId && (
             <div style={{ fontSize: 12, color: '#999' }}>{employee.employeeId}</div>
+          )}
+          {departmentPath && (
+            <div style={{ fontSize: 12, color: '#1890ff', marginTop: 4 }}>
+              组织：{departmentPath}
+            </div>
           )}
         </div>
       </Space>

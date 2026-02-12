@@ -6,7 +6,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import EmployeeCard from './EmployeeCard';
 import type { Employee } from '../services/personnel';
 import personnelApi from '../services/personnel';
+import { departmentApi } from '../services/department';
 import { useUserStore } from '../stores/userStore';
+import { useFactoryStore } from '../stores/factoryStore';
 
 interface EmployeePoolProps {
   onAssignEmployees: (employeeIds: string[], departmentId: string) => void;
@@ -40,18 +42,33 @@ const MultiSelectDragContainer: React.FC<{
 
 const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
   const { user } = useUserStore();
+  const { currentFactory } = useFactoryStore();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('all');
+
+  // 获取部门列表用于反查路径
+  const fetchDepartments = async () => {
+    if (!currentFactory?.id) return;
+    try {
+      const response: any = await departmentApi.getDepartments({
+        factoryId: currentFactory.id,
+      });
+      setDepartments(response.departments || []);
+    } catch (error) {
+      console.error('获取部门列表失败:', error);
+    }
+  };
 
   // 获取员工列表
   const fetchEmployees = async () => {
     setLoading(true);
     try {
       const params: any = {
-        factoryId: user?.factoryId // 显式传递 factoryId 确保隔离
+        factoryId: currentFactory?.id || user?.factoryId
       };
       if (activeTab === 'unassigned') {
         params.unassigned = '1';
@@ -67,10 +84,33 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
 
   useEffect(() => {
     fetchEmployees();
-  }, [activeTab, user?.factoryId]); // 监听 factoryId 变化以重拉数据
+    fetchDepartments();
+  }, [activeTab, currentFactory?.id, user?.factoryId]);
 
-  // 过滤员工
-  const filteredEmployees = useMemo(() => {
+  // 扁平化部门树映射
+  const deptMap = useMemo(() => {
+    const map = new Map<string, any>();
+    const flatten = (list: any[]) => {
+      list.forEach((item) => {
+        map.set(item.id, item);
+        if (item.children) flatten(item.children);
+      });
+    };
+    flatten(departments);
+    return map;
+  }, [departments]);
+
+  // 反查部门路径
+  const getDeptPath = (deptId: string) => {
+    if (!deptId || !deptMap.has(deptId)) return '未分配';
+    const node3 = deptMap.get(deptId);
+    const node2 = node3?.parentId ? deptMap.get(node3.parentId) : null;
+    const node1 = node2?.parentId ? deptMap.get(node2.parentId) : null;
+
+    if (node1) return `${node1.name} / ${node2.name} / ${node3.name}`;
+    if (node2) return `${node2.name} / ${node3.name}`;
+    return node3.name;
+  };
     let result = employees;
     
     if (searchText.trim()) {
@@ -218,6 +258,7 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
                   <EmployeeCard
                     key={employee.id}
                     employee={employee}
+                    departmentPath={getDeptPath((employee as any).departmentId)}
                     isSelected={selectedIds.has(employee.id)}
                     onSelect={toggleSelect}
                     selectedIds={selectedIds}
