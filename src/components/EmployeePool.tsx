@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Card, Tabs, Input, Space, Checkbox, Alert, Spin, Empty, Button } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, Tabs, Input, Space, Checkbox, Alert, Spin, Empty, Button, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { DndProvider, useDrag } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import EmployeeCard from './EmployeeCard';
 import type { Employee } from '../services/personnel';
 import personnelApi from '../services/personnel';
+import { useUserStore } from '../stores/userStore';
 
 interface EmployeePoolProps {
   onAssignEmployees: (employeeIds: string[], departmentId: string) => void;
@@ -38,6 +39,7 @@ const MultiSelectDragContainer: React.FC<{
 };
 
 const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
+  const { user } = useUserStore();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -48,7 +50,9 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const params: any = {};
+      const params: any = {
+        factoryId: user?.factoryId // 显式传递 factoryId 确保隔离
+      };
       if (activeTab === 'unassigned') {
         params.unassigned = true;
       }
@@ -63,7 +67,7 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
 
   useEffect(() => {
     fetchEmployees();
-  }, [activeTab]);
+  }, [activeTab, user?.factoryId]); // 监听 factoryId 变化以重拉数据
 
   // 过滤员工
   const filteredEmployees = useMemo(() => {
