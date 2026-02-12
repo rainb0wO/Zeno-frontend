@@ -100,15 +100,15 @@ const Dashboard = () => {
                 <Skeleton active paragraph={false} />
               ) : (
                 <Statistic
-                  value={data?.employee.total ?? 0}
+                  value={data?.employee?.total ?? 0}
                   formatter={(v) => formatNumber(Number(v))}
                   styles={{ content: { color: '#52c41a', fontSize: '32px', fontWeight: '600' } }}
-                  suffix={renderTrend(data?.employee.momGrowthRate ?? 0, '#52c41a')}
+                  suffix={renderTrend(data?.employee?.momGrowthRate ?? 0, '#52c41a')}
                 />
               )}
               <div className="metric-description">
-                较上月{data?.employee.momGrowthRate !== undefined && data.employee.momGrowthRate >= 0 ? '增长' : '下降'}{' '}
-                {loading ? '--' : formatPercent(Math.abs(data?.employee.momGrowthRate ?? 0))}
+                较上月{data?.employee?.momGrowthRate !== undefined && data.employee.momGrowthRate >= 0 ? '增长' : '下降'}{' '}
+                {loading ? '--' : formatPercent(Math.abs(data?.employee?.momGrowthRate ?? 0))}
               </div>
             </div>
           </Card>
