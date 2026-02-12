@@ -86,13 +86,12 @@ const CapacityDetail = () => {
             <Space>
               <Button
                 type="primary"
-                disabled={isReadonly}
                 onClick={() => {
                   if (isReadonly) {
                     showTip();
                     return;
                   }
-                  message.info('请在电脑端进行编辑');
+                  message.info('编辑功能待接入');
                 }}
               >
                 编辑
