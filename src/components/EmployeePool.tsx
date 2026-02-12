@@ -111,8 +111,11 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
     if (node2) return `${node2.name} / ${node3.name}`;
     return node3.name;
   };
+
+  // 过滤员工
+  const filteredEmployees = useMemo(() => {
     let result = employees;
-    
+
     if (searchText.trim()) {
       const kw = searchText.trim().toLowerCase();
       result = result.filter(
