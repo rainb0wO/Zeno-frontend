@@ -248,13 +248,33 @@ const Capacity = () => {
       key: 'action', 
       render: (_: any, record: ProductionPlan) => (
         <Space size="small">
-          <Button type="link" size="small" onClick={() => showEditModal(record)}>编辑</Button>
-          <Button type="link" danger size="small" onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button 
+            type="link" 
+            size="small" 
+            onClick={(e) => {
+              e.stopPropagation();
+              showEditModal(record);
+            }}
+          >
+            编辑
+          </Button>
+          <Button 
+            type="link" 
+            danger 
+            size="small" 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(record.id);
+            }}
+          >
+            删除
+          </Button>
           <Button 
             type="link" 
             icon={<ToolOutlined />} 
             size="small" 
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setSelectedPlanForProcess(record);
               setShowProcessGenerator(true);
             }}
@@ -265,7 +285,8 @@ const Capacity = () => {
             type="link" 
             icon={<FileTextOutlined />} 
             size="small" 
-            onClick={async () => {
+            onClick={async (e) => {
+              e.stopPropagation();
               // 加载工序
               try {
                 const res: any = await processApi.getProcessesByPlan(record.id);
@@ -285,7 +306,8 @@ const Capacity = () => {
             type="link" 
             icon={<CalendarOutlined />} 
             size="small" 
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setSelectedPlanForProcess(record);
               setShowScheduleGenerator(true);
             }}
@@ -358,7 +380,10 @@ const Capacity = () => {
           loading={loading}
           pagination={{ pageSize: 10 }}
           onRowClick={(record) => {
-            navigate(`/capacity/${record.id}`);
+            // 只有移动端（或只读模式）才跳详情页
+            if (isReadonly) {
+              navigate(`/capacity/${record.id}`);
+            }
           }}
           mobileRenderItem={(record) => (
             <Space direction="vertical" size={6} style={{ width: '100%' }}>
