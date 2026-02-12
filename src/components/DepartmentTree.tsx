@@ -74,7 +74,11 @@ const convertToTreeData = (
     .filter(dept => showDeleted || !dept.deletedAt)
     .map(dept => {
       const isDeleted = !!dept.deletedAt;
-      const count = dept.employeeCount || 0;
+      const count =
+        (dept as any)?._count?.employees ??
+        (Array.isArray((dept as any).employees) ? (dept as any).employees.length : undefined) ??
+        (dept as any).employeeCount ??
+        0;
       
       return {
         key: dept.id,
