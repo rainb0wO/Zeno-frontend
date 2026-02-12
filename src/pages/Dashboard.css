@@ -43,6 +43,7 @@
 /* 关键指标卡片 */
 :root {
   --dashboard-section-gap: 40px;
+  --dashboard-section-gap-md: 24px;
 }
 
 .dashboard-sections {
@@ -50,6 +51,13 @@
   flex-direction: column;
   gap: var(--dashboard-section-gap);
   padding-bottom: var(--dashboard-section-gap);
+}
+
+@media (max-width: 768px) {
+  .dashboard-sections {
+    gap: var(--dashboard-section-gap-md);
+    padding-bottom: var(--dashboard-section-gap-md);
+  }
 }
 
 .dashboard-metrics {
