@@ -55,7 +55,23 @@ function ResponsiveDataList<T extends object = any>(props: ResponsiveDataListPro
         rowKey={rowKey as any}
         loading={loading}
         pagination={pagination}
-        onRow={(record) => ({ onClick: () => onRowClick?.(record) })}
+        onRow={(record) => ({
+          onClick: () => onRowClick?.(record),
+          onMouseDown: (e) => {
+            const target = e.target as HTMLElement | null;
+            if (!target) return;
+            if (
+              target.closest('a') ||
+              target.closest('button') ||
+              target.closest('[role="button"]') ||
+              target.closest('.ant-btn') ||
+              target.closest('.ant-dropdown-menu') ||
+              target.closest('[data-row-click-ignore="true"]')
+            ) {
+              e.stopPropagation();
+            }
+          }
+        })}
       />
     );
   }
