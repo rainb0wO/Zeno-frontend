@@ -7,6 +7,7 @@ export interface Employee {
   employeeId: string;
   factoryId?: string;
   departmentId?: string;
+  departmentName?: string; // 部门名称（从后端返回）
   position?: string;
   hireDate?: string;
   salaryType?: 'PIECE' | 'TIME' | 'FIXED';
@@ -16,9 +17,10 @@ export interface Employee {
   address?: string;
   createdAt?: string;
   updatedAt?: string;
+  avatar?: string;
 }
 
-// 部门类型
+// ---- 已移除所有部门相关接口 ----
 export interface Department {
   id: string;
   name: string;
@@ -64,6 +66,7 @@ export const personnelApi = {
     factoryId?: string;
     departmentId?: string;
     keyword?: string;
+    unassigned?: boolean; // 是否只查询未分配部门的员工
   }): Promise<{ employees: Employee[] }> => {
     return get<{ employees: Employee[] }>('/employees', params);
   },

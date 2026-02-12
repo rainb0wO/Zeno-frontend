@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Table, Space, Select, Modal, Form, Input, message, Spin } from 'antd';
+import { Card, Button, Space, Modal, Form, Input, message, Spin, Select, Tag, Alert } from 'antd';
 import BatchImportModal from '../../components/BatchImportModal';
+import ResponsiveDataList from '../../components/ResponsiveDataList';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import personnelApi from '../../services/personnel';
 
-const { Option } = Select;
+
 
 const Personnel = () => {
   const navigate = useNavigate();
@@ -225,7 +226,7 @@ const Personnel = () => {
         // 统一以重新拉取列表为准，保证与后端一致
         const ok = await fetchEmployees();
         if (ok) {
-          message.success('员工创建成功');
+          message.success('员工创建成功，请在部门管理中进行分配');
         }
       }
       
@@ -264,6 +265,17 @@ const Personnel = () => {
     { title: '姓名', dataIndex: 'name', key: 'name', render: (name: string) => <Space><UserOutlined />{name}</Space> },
     { title: '联系电话', dataIndex: 'phone', key: 'phone' },
     {
+      title: '部门',
+      dataIndex: 'departmentName',
+      key: 'department',
+      render: (departmentName: string, record: any) => {
+        if (departmentName) {
+          return departmentName;
+        }
+        return <Tag color="default">未分配</Tag>;
+      },
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_: any, record: any) => (
@@ -289,6 +301,11 @@ const Personnel = () => {
     },
   ];
 
+  // 计算未分配员工数量
+  const unassignedCount = useMemo(() => {
+    return employees.filter(emp => !emp.departmentId).length;
+  }, [employees]);
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -308,9 +325,9 @@ const Personnel = () => {
             onChange={setSelectedDepartment}
             allowClear={false}
           >
-            <Option key="全部" value="全部">全部</Option>
+            <Select.Option key="全部" value="全部">全部</Select.Option>
             {departments.map(dep => (
-              <Option key={dep.id} value={dep.id}>{dep.name}</Option>
+              <Select.Option key={dep.id} value={dep.id}>{dep.name}</Select.Option>
             ))}
           </Select>
           <Button 
@@ -327,15 +344,44 @@ const Personnel = () => {
           </Button>
         </div>
       </div>
+
+      {unassignedCount > 0 && (
+        <Alert
+          message={`共有 ${unassignedCount} 名员工未分配部门，请在"部门管理"中进行分配`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
       
       {/* 移除variant="outlined"属性，兼容Ant Design v4 */}
       <Card title="员工列表">
         <Spin spinning={loading}>
-          <Table 
-            columns={columns} 
-            dataSource={filteredEmployees} 
-            rowKey="id" 
-            pagination={{ pageSize: 10 }} 
+          <ResponsiveDataList
+            columns={columns}
+            dataSource={filteredEmployees}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            onRowClick={(record) => {
+              navigate(`/personnel/${record.id}`);
+            }}
+            mobileRenderItem={(record) => (
+              <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Space size={6}>
+                    <UserOutlined />
+                    <div style={{ fontWeight: 600 }}>{record.name}</div>
+                  </Space>
+                  {record.departmentName ? (
+                    <Tag color="blue">{record.departmentName}</Tag>
+                  ) : (
+                    <Tag color="default">未分配</Tag>
+                  )}
+                </Space>
+                <div style={{ fontSize: 12, color: '#666' }}>员工ID：{record.employeeId || '-'}</div>
+                <div style={{ fontSize: 12, color: '#666' }}>电话：{record.phone || '-'}</div>
+              </Space>
+            )}
           />
         </Spin>
       </Card>

@@ -11,7 +11,10 @@ import {
   ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import logisticsApi from '../../services/logistics';
+import BizAction from '../../components/BizAction';
+import ResponsiveDataList from '../../components/ResponsiveDataList';
 import './Logistics.css';
 
 const { Option } = Select;

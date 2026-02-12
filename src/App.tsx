@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import './App.css';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -12,12 +12,18 @@ import MainLayout from './layouts/MainLayout';
 
 // 产能管理
 import Capacity from './pages/capacity/Capacity';
+import CapacityDetail from './pages/capacity/CapacityDetail';
 
 // 工资计算
 import Salary from './pages/salary/Salary';
 
 // 人员管理
 import Personnel from './pages/personnel/Personnel';
+import PersonnelDetail from './pages/personnel/PersonnelDetail';
+
+// 部门管理
+import Department from './pages/department/Department';
+import DepartmentDetail from './pages/department/DepartmentDetail';
 
 // 物流管理
 import Logistics from './pages/logistics/Logistics';
@@ -30,6 +36,7 @@ import Schedule from './pages/schedule/Schedule';
 
 // 厂区管理
 import Factory from './pages/factory/Factory';
+import FactoryDetail from './pages/factory/FactoryDetail';
 
 // 设置页面
 import PersonalSettings from './pages/PersonalSettings';
@@ -42,8 +49,9 @@ import TemplateLibrary from './pages/TemplateLibrary';
 function App() {
   return (
     <ConfigProvider locale={zhCN}>
-      <Router>
-        <Routes>
+      <AntdApp>
+        <Router>
+          <Routes>
           {/* 认证路由 */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -58,10 +66,15 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="factory" element={<Factory />} />
+            <Route path="factory/:id" element={<FactoryDetail />} />
             <Route path="capacity" element={<Capacity />} />
+            <Route path="capacity/:id" element={<CapacityDetail />} />
             <Route path="template-library" element={<TemplateLibrary />} />
             <Route path="salary" element={<Salary />} />
             <Route path="personnel" element={<Personnel />} />
+            <Route path="personnel/:id" element={<PersonnelDetail />} />
+            <Route path="department" element={<Department />} />
+            <Route path="department/:id" element={<DepartmentDetail />} />
             <Route path="logistics" element={<Logistics />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="schedule" element={<Schedule />} />
@@ -72,7 +85,8 @@ function App() {
           {/* 404路由 */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
+        </Router>
+      </AntdApp>
     </ConfigProvider>
   );
 }

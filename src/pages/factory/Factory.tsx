@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useFactoryStore } from '../../stores/factoryStore';
-import { Card, Button, Table, Space, Modal, Form, Input, Select, message } from 'antd';
+import { Card, Space, Modal, Form, Input, Select, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { factoryApi } from '../../services/factory';
 import type { Factory as FactoryType, CreateFactoryParams } from '../../services/factory';
+import BizAction from '../../components/BizAction';
+import { useReadonly } from '../../contexts/ReadonlyContext';
+import ResponsiveDataList from '../../components/ResponsiveDataList';
+import { useNavigate } from 'react-router-dom';
 
 const { Option } = Select;
 
 const Factory = () => {
   const { setFactories: setGlobalFactories } = useFactoryStore();
+  const { isReadonly, showTip } = useReadonly();
+  const navigate = useNavigate();
   const [factories, setFactories] = useState<FactoryType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -36,6 +42,10 @@ const Factory = () => {
   };
 
   const showAddModal = () => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setIsEdit(false);
     setCurrentFactory(null);
     form.resetFields();
@@ -43,6 +53,10 @@ const Factory = () => {
   };
 
   const showEditModal = (factory: FactoryType) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     setIsEdit(true);
     setCurrentFactory(factory);
     form.setFieldsValue(factory);
@@ -76,6 +90,10 @@ const Factory = () => {
   };
 
   const handleDelete = (id: string) => {
+    if (isReadonly) {
+      showTip();
+      return;
+    }
     Modal.confirm({
       title: '确认删除',
       content: '确定要删除这个厂区吗？删除后不可恢复。',
@@ -104,8 +122,12 @@ const Factory = () => {
       key: 'action', 
       render: (_: any, record: FactoryType) => (
         <Space size="middle">
-          <Button type="primary" icon={<EditOutlined />} size="small" onClick={() => showEditModal(record)}>编辑</Button>
-          <Button danger icon={<DeleteOutlined />} size="small" onClick={() => handleDelete(record.id)}>删除</Button>
+          <BizAction type="primary" icon={<EditOutlined />} size="small" onClick={() => showEditModal(record)}>
+            编辑
+          </BizAction>
+          <BizAction danger icon={<DeleteOutlined />} size="small" onClick={() => handleDelete(record.id)}>
+            删除
+          </BizAction>
         </Space>
       ),
     },
@@ -115,18 +137,31 @@ const Factory = () => {
     <div className="page-container">
       <div className="page-header">
         <h1>厂区管理</h1>
-        <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
+        <BizAction type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
           新建厂区
-        </Button>
+        </BizAction>
       </div>
       
       <Card title="厂区列表" variant="outlined">
-        <Table 
-          columns={columns} 
-          dataSource={factories} 
-          rowKey="id" 
+        <ResponsiveDataList
+          columns={columns}
+          dataSource={factories}
+          rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10 }} 
+          pagination={{ pageSize: 10 }}
+          onRowClick={(record) => {
+            navigate(`/factory/${record.id}`);
+          }}
+          mobileRenderItem={(record) => (
+            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+              <div style={{ fontWeight: 600 }}>{record.name}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>联系人：{record.contactPerson}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>电话：{record.contactPhone}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>
+                地址：{record.address}
+              </div>
+            </Space>
+          )}
         />
       </Card>
       

@@ -43,6 +43,13 @@ jobs:
           tar -czf dist.tar.gz -C dist .
 
       # 5. 上传文件到服务器
+      - name: Preflight - SSH handshake check
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -vvv ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo SSH_OK"
+
       - name: Upload dist.tar.gz to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -52,6 +59,10 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           source: "dist.tar.gz"
           target: "/tmp"
+          timeout: 120s
+          command_timeout: 120s
+          debug: true
+          use_insecure_cipher: true
 
       # 6. 在服务器端清空目标目录并解压新文件
       - name: Deploy on server via SSH
@@ -64,28 +75,37 @@ jobs:
           script: |
             set -e
             DEPLOY_DIR="${TARGET_DIR:-/www/zeno/frontend/dist}"
-            
+            TMP_FILE="/tmp/dist.tar.gz"
+
+            echo "==> 检查部署包是否存在：$TMP_FILE"
+            if [ ! -f "$TMP_FILE" ]; then
+              echo "❌ 未找到部署包 $TMP_FILE，终止部署（不会清空线上目录）"
+              echo "==> /tmp 目录文件列表："
+              ls -lh /tmp | head -n 50 || true
+              exit 1
+            fi
+
             # 创建部署目录（如果不存在）
             sudo mkdir -p "$DEPLOY_DIR"
-            
+
             # 清空目录（保留目录本身）
             echo "==> 清理旧文件"
             sudo find "$DEPLOY_DIR" -mindepth 1 -delete
-            
+
             # 解压新文件
             echo "==> 解压新版本"
-            sudo tar -xzf /tmp/dist.tar.gz -C "$DEPLOY_DIR" --strip-components=0
-            
+            sudo tar -xzf "$TMP_FILE" -C "$DEPLOY_DIR" --strip-components=0
+
             # 设置正确的权限
             echo "==> 设置权限"
             sudo chown -R nginx:nginx "$DEPLOY_DIR"
             sudo chmod -R 755 "$DEPLOY_DIR"
-            
+
             # 清理临时文件
-            sudo rm -f /tmp/dist.tar.gz
-            
+            sudo rm -f "$TMP_FILE"
+
             # 重新加载 Nginx
-            echo "�� 重新加载 Nginx..."
+            echo "==> 重新加载 Nginx..."
             sudo systemctl reload nginx || true
-            
+
             echo "✅ 部署完成！"
