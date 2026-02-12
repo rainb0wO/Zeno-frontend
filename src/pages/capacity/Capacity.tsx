@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Progress, Tag } from 'antd';
+import { Card, Button, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Progress, Tag, Descriptions, Empty } from 'antd';
 import { PlusOutlined, BarChartOutlined, ToolOutlined, FileTextOutlined, CalendarOutlined } from '@ant-design/icons';
 import BizAction from '../../components/BizAction';
 import { useReadonly } from '../../contexts/ReadonlyContext';
@@ -373,34 +373,142 @@ const Capacity = () => {
       )}
       
       <Card title="生产计划列表" variant="outlined">
-        <ResponsiveDataList
-          columns={columns}
-          dataSource={productionPlans}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          onRowClick={(record) => {
-            // 只有移动端（或只读模式）才跳详情页
-            if (isReadonly) {
-              navigate(`/capacity/${record.id}`);
-            }
-          }}
-          mobileRenderItem={(record) => (
-            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 600 }}>{record.productName}</div>
-                {getStatusTag(record.status)}
-              </Space>
-              <Progress percent={record.progress || 0} size="small" />
-              <div style={{ fontSize: 12, color: '#666' }}>
-                目标/实际：{record.targetQty} / {record.actualQty || 0}
-              </div>
-              <div style={{ fontSize: 12, color: '#666' }}>
-                时间：{record.startDate} ~ {record.endDate}
-              </div>
-            </Space>
-          )}
-        />
+        {loading ? (
+          <div style={{ padding: '24px 0' }}>
+            <div style={{ textAlign: 'center' }}>
+              <Progress percent={0} showInfo={false} />
+            </div>
+          </div>
+        ) : productionPlans.length === 0 ? (
+          <Empty description="暂无生产计划" />
+        ) : (
+          <Row gutter={[16, 16]}>
+            {productionPlans.map((record) => (
+              <Col key={record.id} xs={24} sm={24} md={12} lg={8} xl={6}>
+                <Card
+                  hoverable
+                  styles={{ body: { padding: 16 } }}
+                  onClick={() => {
+                    if (isReadonly) {
+                      navigate(`/capacity/${record.id}`);
+                    }
+                  }}
+                  title={
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <div style={{ fontWeight: 600, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {record.productName}
+                      </div>
+                      {getStatusTag(record.status)}
+                    </Space>
+                  }
+                >
+                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                    <Progress
+                      percent={record.progress || 0}
+                      size="small"
+                      status={
+                        (record.progress || 0) >= 100
+                          ? 'success'
+                          : (record.progress || 0) >= 80
+                            ? 'active'
+                            : 'normal'
+                      }
+                    />
+
+                    <Descriptions column={2} size="small">
+                      <Descriptions.Item label="目标">{record.targetQty}</Descriptions.Item>
+                      <Descriptions.Item label="实际">{record.actualQty || 0}</Descriptions.Item>
+                      <Descriptions.Item label="优先级">
+                        {record.priorityLevel ? (
+                          <Space size={4} wrap>
+                            {(() => {
+                              const priorityMap: Record<string, { color: string; text: string }> = {
+                                HIGH: { color: 'red', text: '高优先级' },
+                                MEDIUM: { color: 'orange', text: '中优先级' },
+                                LOW: { color: 'green', text: '低优先级' },
+                              };
+                              const cfg = priorityMap[record.priorityLevel] || { color: 'default', text: record.priorityLevel };
+                              return <Tag color={cfg.color}>{cfg.text}</Tag>;
+                            })()}
+                            {record.isManualPriority && <Tag color="blue">手动</Tag>}
+                          </Space>
+                        ) : (
+                          <Tag color="default">未计算</Tag>
+                        )}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="分数">{record.priorityScore ? `${record.priorityScore}分` : '-'}</Descriptions.Item>
+                      <Descriptions.Item label="开始" span={2}>{record.startDate}</Descriptions.Item>
+                      <Descriptions.Item label="结束" span={2}>{record.endDate}</Descriptions.Item>
+                    </Descriptions>
+
+                    {!isReadonly && (
+                      <Space wrap size="small" style={{ marginTop: 4 }}>
+                        <Button
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            showEditModal(record);
+                          }}
+                        >
+                          编辑
+                        </Button>
+                        <Button
+                          size="small"
+                          danger
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(record.id);
+                          }}
+                        >
+                          删除
+                        </Button>
+                        <Button
+                          size="small"
+                          icon={<ToolOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPlanForProcess(record);
+                            setShowProcessGenerator(true);
+                          }}
+                        >
+                          工序
+                        </Button>
+                        <Button
+                          size="small"
+                          icon={<FileTextOutlined />}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const res: any = await processApi.getProcessesByPlan(record.id);
+                              setProcesses(res.data.data || res.data || []);
+                              setSelectedPlanForProcess(record);
+                              setShowPieceWorkManager(true);
+                            } catch (error) {
+                              message.error('加载工序失败');
+                            }
+                          }}
+                        >
+                          计件
+                        </Button>
+                        <Button
+                          size="small"
+                          icon={<CalendarOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPlanForProcess(record);
+                            setShowScheduleGenerator(true);
+                          }}
+                        >
+                          排班
+                        </Button>
+                      </Space>
+                    )}
+                  </Space>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
       </Card>
       
       <Modal
