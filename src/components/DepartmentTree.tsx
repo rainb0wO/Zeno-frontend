@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Tree, Tag, Dropdown, Button, Space, message } from 'antd';
+import { Tree, Tag, Dropdown, Button, Space, Popover, List, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useDrop } from 'react-dnd';
 import {
@@ -9,9 +9,14 @@ import {
   UndoOutlined,
   ClearOutlined,
   MoreOutlined,
+  UserOutlined,
+  TeamOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import type { Department } from '../services/department';
 import { useUserStore } from '../stores/userStore';
+
+const { Text } = Typography;
 
 interface DepartmentTreeProps {
   departments: Department[];
@@ -100,15 +105,65 @@ const convertToTreeData = (
             showDeleted={showDeleted}
             onDropEmployee={onDropEmployee}
           >
-            <span style={{ color: isDeleted ? '#aaa' : undefined }}>
-              {dept.name}
-              {isDeleted && (
-                <Tag color="error" style={{ marginLeft: 8 }}>
-                  已删除
-                </Tag>
-              )}
-              <Tag style={{ marginLeft: 8 }}>{count} 人</Tag>
-            </span>
+            <Popover
+              placement="right"
+              mouseEnterDelay={0.2}
+              content={
+                <div style={{ maxWidth: 280 }}>
+                  <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <UserOutlined />
+                    <Text strong>负责人：</Text>
+                    <Text>{(dept as any)?.leader?.name || '未设置'}</Text>
+                  </div>
+
+                  {(!dept.parentId || String((dept as any).parentId).trim() === '') ? (
+                    <div>
+                      <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ApartmentOutlined />
+                        <Text strong>子部门：</Text>
+                      </div>
+                      <List
+                        size="small"
+                        dataSource={(dept.children || []).map((c) => c.name)}
+                        locale={{ emptyText: '无' }}
+                        renderItem={(name) => (
+                          <List.Item style={{ padding: '2px 0' }}>
+                            <Text>{name}</Text>
+                          </List.Item>
+                        )}
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TeamOutlined />
+                        <Text strong>成员：</Text>
+                      </div>
+                      <List
+                        size="small"
+                        dataSource={((dept as any).employees || []).map((e: any) => e.name)}
+                        locale={{ emptyText: '无' }}
+                        renderItem={(name) => (
+                          <List.Item style={{ padding: '2px 0' }}>
+                            <Text>{name}</Text>
+                          </List.Item>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
+              }
+            >
+              <span style={{ color: isDeleted ? '#aaa' : undefined }}>
+                {dept.name}
+                {isDeleted && (
+                  <Tag color="error" style={{ marginLeft: 8 }}>
+                    已删除
+                  </Tag>
+                )}
+                <Tag style={{ marginLeft: 8 }}>{count} 人</Tag>
+              </span>
+            </Popover>
           </DroppableTreeNode>
         ),
         children: dept.children
