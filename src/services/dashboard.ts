@@ -31,8 +31,8 @@ export type DashboardOverview = {
 };
 
 export const dashboardApi = {
-  getOverview: (): Promise<DashboardOverview> => {
-    return get<DashboardOverview>('/dashboard/overview');
+  getOverview: (params?: { startDate?: string; endDate?: string }): Promise<DashboardOverview> => {
+    return get<DashboardOverview>('/dashboard/overview', params);
   },
 };
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Progress, Row, Col, Skeleton, Space, Statistic, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Progress, Row, Col, Skeleton, Space, Statistic, Typography } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -13,24 +13,31 @@ import { formatCNY, formatNumber, formatPercent } from '../utils/format';
 import './Dashboard.css';
 
 const { Title, Paragraph } = Typography;
+const { RangePicker } = DatePicker;
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashboardOverview | null>(null);
 
-  const loadOverview = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await dashboardApi.getOverview();
-      setData(resp);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || '数据加载失败');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    const [range, setRange] = useState<[string, string] | null>(null);
+
+  const loadOverview = useCallback(
+    async (nextRange?: [string, string] | null) => {
+      const r = nextRange ?? range;
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await dashboardApi.getOverview(r ? { startDate: r[0], endDate: r[1] } : undefined);
+        setData(resp);
+      } catch (e: any) {
+        setError(e?.response?.data?.message || e?.message || '数据加载失败');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [range]
+  );
 
   useEffect(() => {
     loadOverview();
@@ -51,13 +58,14 @@ const Dashboard = () => {
     };
   }, [data]);
 
-  const renderTrend = (rate: number, color: string) => {
+  const renderTrend = (rate: number) => {
     const isUp = rate >= 0;
+    const color = isUp ? '#52c41a' : '#ff4d4f';
     const Icon = isUp ? ArrowUpOutlined : ArrowDownOutlined;
     return (
-      <Space className="metric-trend">
+      <Space className="metric-trend" style={{ marginLeft: 8 }}>
         <Icon style={{ color, fontSize: '14px' }} />
-        <span style={{ fontSize: '14px', color }}>{formatPercent(Math.abs(rate))}</span>
+        <span style={{ fontSize: '14px', color, fontWeight: 500 }}>{formatPercent(Math.abs(rate))}</span>
       </Space>
     );
   };
@@ -65,10 +73,29 @@ const Dashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <Title level={2} className="dashboard-title">
-          生产管理仪表板
-        </Title>
-        <Paragraph className="dashboard-subtitle">实时监控生产数据，优化管理决策</Paragraph>
+        <div className="dashboard-header-left">
+          <Title level={2} className="dashboard-title">
+            生产管理仪表板
+          </Title>
+          <Paragraph className="dashboard-subtitle">实时监控生产数据，优化管理决策</Paragraph>
+        </div>
+        <div className="dashboard-header-right">
+          <RangePicker
+            size="small"
+            className="dashboard-range"
+            allowClear
+            onChange={(dates) => {
+              if (!dates || dates.length !== 2 || !dates[0] || !dates[1]) {
+                setRange(null);
+                loadOverview(null);
+                return;
+              }
+              const next: [string, string] = [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')];
+              setRange(next);
+              loadOverview(next);
+            }}
+          />
+        </div>
       </div>
 
       {error && (
@@ -103,7 +130,7 @@ const Dashboard = () => {
                   value={data?.employee?.total ?? 0}
                   formatter={(v) => formatNumber(Number(v))}
                   styles={{ content: { color: '#52c41a', fontSize: '32px', fontWeight: '600' } }}
-                  suffix={renderTrend(data?.employee?.momGrowthRate ?? 0, '#52c41a')}
+                  suffix={renderTrend(data?.employee?.momGrowthRate ?? 0)}
                 />
               )}
               <div className="metric-description">
@@ -168,7 +195,7 @@ const Dashboard = () => {
                   value={data?.salary?.monthTotal ?? 0}
                   formatter={(v) => formatCNY(Number(v))}
                   styles={{ content: { color: '#fa8c16', fontSize: '32px', fontWeight: '600' } }}
-                  suffix={renderTrend(data?.salary?.momGrowthRate ?? 0, '#fa8c16')}
+                  suffix={renderTrend(data?.salary?.momGrowthRate ?? 0)}
                 />
               )}
               <div className="metric-description">

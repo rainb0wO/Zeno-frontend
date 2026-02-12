@@ -216,9 +216,9 @@ const Capacity = () => {
       render: (level: string, record: any) => {
         if (!level) return <Tag color="default">未计算</Tag>;
         const priorityMap: Record<string, { color: string; text: string }> = {
-          HIGH: { color: 'red', text: '高优先级' },
-          MEDIUM: { color: 'orange', text: '中优先级' },
-          LOW: { color: 'green', text: '低优先级' },
+          HIGH: { color: 'red', text: '高' },
+          MEDIUM: { color: 'orange', text: '中' },
+          LOW: { color: 'green', text: '低' },
         };
         const config = priorityMap[level] || { color: 'default', text: level };
         return (
@@ -415,7 +415,7 @@ const Capacity = () => {
                       }
                     />
 
-                    <Descriptions column={2} size="small">
+                    <Descriptions column={2} size="small" styles={{ itemLabel: { width: 56, whiteSpace: 'nowrap' }, itemContent: { minWidth: 0 } }}>
                       <Descriptions.Item label="目标">{record.targetQty}</Descriptions.Item>
                       <Descriptions.Item label="实际">{record.actualQty || 0}</Descriptions.Item>
                       <Descriptions.Item label="优先级">
@@ -423,9 +423,9 @@ const Capacity = () => {
                           <Space size={4} wrap>
                             {(() => {
                               const priorityMap: Record<string, { color: string; text: string }> = {
-                                HIGH: { color: 'red', text: '高优先级' },
-                                MEDIUM: { color: 'orange', text: '中优先级' },
-                                LOW: { color: 'green', text: '低优先级' },
+                                HIGH: { color: 'red', text: '高' },
+                                MEDIUM: { color: 'orange', text: '中' },
+                                LOW: { color: 'green', text: '低' },
                               };
                               const cfg = priorityMap[record.priorityLevel] || { color: 'default', text: record.priorityLevel };
                               return <Tag color={cfg.color}>{cfg.text}</Tag>;

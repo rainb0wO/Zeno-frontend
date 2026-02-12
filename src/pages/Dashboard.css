@@ -6,8 +6,26 @@
 }
 
 .dashboard-header {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-header-left {
+  min-width: 0;
+}
+
+.dashboard-header-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-range {
+  min-width: 240px;
 }
 
 .dashboard-title {
