@@ -54,7 +54,7 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
         factoryId: user?.factoryId // 显式传递 factoryId 确保隔离
       };
       if (activeTab === 'unassigned') {
-        params.unassigned = true;
+        params.unassigned = '1';
       }
       const response = await personnelApi.getEmployees(params);
       setEmployees(response.employees || []);
@@ -85,9 +85,18 @@ const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
     return result;
   }, [employees, searchText]);
 
+  const isUnassigned = (deptId: unknown) => {
+    if (deptId === null || deptId === undefined) return true;
+    const s = String(deptId).trim();
+    if (!s) return true;
+    if (s.toLowerCase() === 'null') return true;
+    if (s === '0') return true;
+    return false;
+  };
+
   // 未分配员工数量
   const unassignedCount = useMemo(() => {
-    return employees.filter(emp => !emp.departmentId).length;
+    return employees.filter(emp => isUnassigned((emp as any).departmentId)).length;
   }, [employees]);
 
   // 切换选择
