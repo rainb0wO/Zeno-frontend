@@ -128,7 +128,7 @@ const Login = () => {
           {loginMode === 'password' ? (
             <>
               <Form.Item
-                name="username"
+                name="account"
                 rules={[{ required: true, message: '请输入用户名!' }]}
               >
                 <Input prefix={<UserOutlined />} placeholder="用户名" />

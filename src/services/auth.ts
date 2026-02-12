@@ -12,7 +12,7 @@ export interface User {
 
 // 登录参数
 export interface LoginParams {
-  username: string;
+  account: string;
   password: string;
 }
 
