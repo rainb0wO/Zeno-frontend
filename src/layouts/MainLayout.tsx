@@ -176,7 +176,12 @@ const MainLayout: React.FC = () => {
     );
   }, [location.pathname]);
 
-  const isMobileReadonly = isMobile && isReadonlyRoute;
+  const isDesktopUA = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Windows NT|Macintosh|Linux x86_64/i.test(navigator.userAgent);
+  }, []);
+
+  const isMobileReadonly = !isDesktopUA && isMobile && isReadonlyRoute;
 
   /* ----------------------------- 渲染 ----------------------------- */
   return (

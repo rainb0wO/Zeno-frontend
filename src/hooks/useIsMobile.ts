@@ -4,8 +4,10 @@ export const useIsMobile = (maxWidth = 992) => {
   const query = useMemo(() => `(max-width: ${maxWidth}px)`, [maxWidth]);
   const [isMobile, setIsMobile] = useState<boolean>(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return false;
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
     const byWidth = window.matchMedia(query).matches;
+    // 只有在窄屏下才考虑 pointer: coarse，防止 PC 触摸屏误判
+    if (!byWidth) return false;
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
     return coarse || byWidth;
   });
 
@@ -16,7 +18,9 @@ export const useIsMobile = (maxWidth = 992) => {
     const mqCoarse = window.matchMedia('(pointer: coarse)');
 
     const update = () => {
-      setIsMobile(mqCoarse.matches || mqWidth.matches);
+      const byWidth = mqWidth.matches;
+      // 只有在窄屏下才判断是否为移动端
+      setIsMobile(byWidth && (mqCoarse.matches || byWidth));
     };
 
     update();
