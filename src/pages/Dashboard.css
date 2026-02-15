@@ -12,10 +12,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap; /* 允许换行 */
 }
 
 .dashboard-header-left {
-  min-width: 0;
+  flex: 1;
+  min-width: 200px;
 }
 
 .dashboard-header-right {
@@ -24,20 +26,39 @@
   align-items: center;
 }
 
+@media (max-width: 576px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .dashboard-header-right {
+    width: 100%;
+  }
+  
+  .dashboard-range {
+    width: 100% !important;
+    min-width: unset;
+  }
+}
+
 .dashboard-range {
   min-width: 240px;
 }
 
 .dashboard-title {
-  margin: 0 0 8px 0 !important;
+  margin: 0 0 4px 0 !important;
   font-weight: 600;
   color: #1a1a1a;
+  white-space: nowrap; /* 防止标题单字换行 */
 }
 
 .dashboard-subtitle {
   margin: 0 !important;
   color: #666;
   font-size: 14px;
+  line-height: 1.4;
 }
 
 /* 关键指标卡片 */
@@ -228,10 +249,6 @@
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  /* 修复行间距导致的横向滚动 */
-  .ant-row{margin:0!important;width:100%!important;}
-  .ant-col{padding:0!important;}
-
   /* 指标卡片字体与布局 */
   .metric-card .ant-statistic-content{font-size:24px!important;}
   .metric-title{font-size:12px;}
@@ -313,14 +330,26 @@
   margin: 0;
 }
 
-/* 调整列间距 - 使用固定 gutter */
-.ant-row {
-  margin: 0 -12px !important; /* gutter 24px 的一半 */
-  width: calc(100% + 24px) !important;
-  display: flex;
-  flex-wrap: wrap;
+/* 调整列间距 - 仅在非移动端使用负边距补偿 */
+@media (min-width: 769px) {
+  .dashboard-metrics, .dashboard-details {
+    margin: 0 -12px !important;
+    width: calc(100% + 24px) !important;
+  }
+  .dashboard-metrics .ant-col, .dashboard-details .ant-col {
+    padding: 0 12px !important;
+  }
 }
 
-.ant-col {
-  padding: 0 12px !important; /* gutter 24px 的一半 */
+@media (max-width: 768px) {
+  .dashboard-metrics, .dashboard-details {
+    margin: 0 !important;
+    width: 100% !important;
+  }
+  .dashboard-metrics .ant-col, .dashboard-details .ant-col {
+    padding: 0 0 16px 0 !important; /* 移动端垂直堆叠，增加底部间距 */
+  }
+  .dashboard-metrics .ant-col:last-child, .dashboard-details .ant-col:last-child {
+    padding-bottom: 0 !important;
+  }
 }
