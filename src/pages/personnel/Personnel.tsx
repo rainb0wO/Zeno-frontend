@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Space, Modal, Form, Input, message, Spin, Select, Tag, Alert } from 'antd';
+import BizAction from '../../components/BizAction';
+import { useReadonly } from '../../contexts/ReadonlyContext';
 import BatchImportModal from '../../components/BatchImportModal';
 import ResponsiveDataList from '../../components/ResponsiveDataList';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
@@ -9,6 +11,7 @@ import { useUserStore } from '../../stores/userStore';
 
 
 const Personnel = () => {
+  const { isReadonly } = useReadonly();
   const { user } = useUserStore();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<any[]>([]);
@@ -339,22 +342,28 @@ const Personnel = () => {
       key: 'action',
       render: (_: any, record: any) => (
         <Space size="middle">
-          <Button
+          <BizAction
             type="primary"
             icon={<EditOutlined />}
             size="small"
-            onClick={() => handleEdit(record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record);
+            }}
           >
             编辑
-          </Button>
-          <Button
+          </BizAction>
+          <BizAction
             danger
             icon={<DeleteOutlined />}
             size="small"
-            onClick={() => handleDelete(record)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(record);
+            }}
           >
             删除
-          </Button>
+          </BizAction>
         </Space>
       ),
     },
@@ -389,18 +398,18 @@ const Personnel = () => {
               <Select.Option key={dep.id} value={dep.id}>{dep.name}</Select.Option>
             ))}
           </Select>
-          <Button 
+          <BizAction 
             type="primary" 
             icon={<PlusOutlined />}
             onClick={handleAdd}
           >
             新增员工
-          </Button>
-          <Button
+          </BizAction>
+          <BizAction
             onClick={() => setImportOpen(true)}
           >
             批量导入
-          </Button>
+          </BizAction>
         </div>
       </div>
 
@@ -422,7 +431,9 @@ const Personnel = () => {
             rowKey="id"
             pagination={{ pageSize: 10 }}
             onRowClick={(record) => {
-              navigate(`/personnel/${record.id}`);
+              if (isReadonly) {
+                navigate(`/personnel/${record.id}`);
+              }
             }}
             mobileRenderItem={(record) => (
               <Space direction="vertical" size={6} style={{ width: '100%' }}>
