@@ -253,15 +253,15 @@ const MainLayout: React.FC = () => {
 
           <div className="header-left">
             <Title level={4} className="app-title">
-              Zeno生产辅助管理平台
+              {screens.md ? 'Zeno生产辅助管理平台' : 'Zeno'}
             </Title>
             <Select
               value={currentFactory?.id}
-              style={{ width: 180 }}
+              style={{ width: screens.md ? 180 : 100 }}
               onChange={handleFactoryChange}
-              placeholder="选择厂区"
+              placeholder="厂区"
               className="factory-select"
-              size="large"
+              size={screens.md ? 'large' : 'middle'}
             >
               {factories.map(factory => (
                 <Select.Option key={factory.id} value={factory.id}>
@@ -277,8 +277,13 @@ const MainLayout: React.FC = () => {
               placement="bottomRight"
               trigger={['click']}
             >
-              <Button type="primary" icon={<UserOutlined />} className="user-button" size="large">
-                {user?.username || '管理员'} ({user?.role || 'USER'})
+              <Button 
+                type="primary" 
+                icon={<UserOutlined />} 
+                className="user-button" 
+                size={screens.md ? 'large' : 'middle'}
+              >
+                {screens.md ? `${user?.username || '管理员'} (${user?.role || 'USER'})` : (user?.username || '管理员')}
               </Button>
             </Dropdown>
           </Space>

@@ -57,6 +57,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/maintenance" element={<Maintenance />} />
           
+          <Route path="/h5/group-capacity-entry" element={<GroupCapacityEntry />} />
+
           {/* 主应用路由 */}
           <Route path="/" element={
             <ProtectedRoute>
