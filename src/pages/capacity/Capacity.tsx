@@ -330,42 +330,46 @@ const Capacity = () => {
       
       {/* 统计卡片 */}
       {statistics && (
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={6}>
-            <Card>
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={12} sm={12} md={6}>
+            <Card size="small">
               <Statistic
                 title="总计划数"
                 value={statistics.totalPlans}
                 prefix={<BarChartOutlined />}
+                valueStyle={{ fontSize: '20px' }}
               />
             </Card>
           </Col>
-          <Col span={6}>
-            <Card>
+          <Col xs={12} sm={12} md={6}>
+            <Card size="small">
               <Statistic
                 title="进行中"
                 value={statistics.inProgressPlans}
-                styles={{ content: { color: '#1890ff' } }}
+                valueStyle={{ color: '#1890ff', fontSize: '20px' }}
               />
             </Card>
           </Col>
-          <Col span={6}>
-            <Card>
+          <Col xs={12} sm={12} md={6}>
+            <Card size="small">
               <Statistic
                 title="已完成"
                 value={statistics.completedPlans}
-                styles={{ content: { color: '#52c41a' } }}
+                valueStyle={{ color: '#52c41a', fontSize: '20px' }}
               />
             </Card>
           </Col>
-          <Col span={6}>
-            <Card>
+          <Col xs={12} sm={12} md={6}>
+            <Card size="small">
               <Statistic
                 title="产能利用率"
                 value={statistics.capacityUtilization}
                 precision={2}
                 suffix="%"
-                styles={{ content: { color: statistics.capacityUtilization >= 80 ? '#52c41a' : '#faad14' } }}
+                valueStyle={{ 
+                  color: statistics.capacityUtilization >= 80 ? '#52c41a' : '#faad14',
+                  fontSize: '20px'
+                }}
               />
             </Card>
           </Col>
