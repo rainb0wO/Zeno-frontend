@@ -46,6 +46,9 @@ import Maintenance from './pages/Maintenance';
 // 模板库管理
 import TemplateLibrary from './pages/TemplateLibrary';
 
+// H5 入口
+import GroupCapacityEntry from './pages/capacity/GroupCapacityEntry';
+
 function App() {
   return (
     <ConfigProvider locale={zhCN}>
