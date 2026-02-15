@@ -22,12 +22,33 @@ const Login = () => {
   const navigate = useNavigate();
   const { setUser, setToken } = useUserStore();
 
+  const getOrCreateDeviceId = () => {
+    const key = 'zeno_device_id';
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(key, id);
+    }
+    return id;
+  };
+
+  const getDeviceType = () => {
+    // 这里默认 WEB，移动端 App/H5 需要在对应端传 ANDROID/IOS 等
+    return 'WEB';
+  };
+
   const onFinish = async (values: LoginParams) => {
     setLoading(true);
     setErrorMsg(''); // 清空之前的错误提示
     try {
-      // 直接使用后端登录接口
-      const response = await authApi.login(values);
+      // 直接使用后端登录接口（补齐设备参数）
+      const response = await authApi.login({
+        ...values,
+        deviceId: getOrCreateDeviceId(),
+        deviceType: getDeviceType(),
+      } as any);
       
       console.log('登录响应:', response);
       
@@ -82,9 +103,11 @@ const Login = () => {
       }
       
       // 根据错误码显示精准提示
-      if (errorCode === 1001) {
+      if (errorCode === 2001) {
+        setErrorMsg('当前账号最多支持5台非移动端设备登录，已达上限。请先在其他设备退出后再试。');
+      } else if (errorCode === 1001) {
         setErrorMsg('该账号尚未注册');
-      } else if (errorCode === 1002) {
+      } else if (errorCode === 1004) {
         setErrorMsg('密码错误');
       } else {
         setErrorMsg(errorMessage || '登录失败，请检查网络连接');
