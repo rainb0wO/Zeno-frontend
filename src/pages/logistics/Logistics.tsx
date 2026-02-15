@@ -15,12 +15,15 @@ import { useNavigate } from 'react-router-dom';
 import logisticsApi from '../../services/logistics';
 import BizAction from '../../components/BizAction';
 import ResponsiveDataList from '../../components/ResponsiveDataList';
+import { useReadonly } from '../../contexts/ReadonlyContext';
 import './Logistics.css';
 
 const { Option } = Select;
 const { Title, Paragraph } = Typography;
 
 const Logistics = () => {
+  const { isReadonly } = useReadonly();
+  const navigate = useNavigate();
   // State for logistics records
   const [logisticsRecords, setLogisticsRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -105,12 +108,57 @@ const Logistics = () => {
     fetchLogisticsStats();
   }, [selectedType, selectedStatus, searchKeyword]);
 
+  const getStatusTag = (status: string) => {
+    let statusConfig: any = {
+      text: status,
+      color: '#d9d9d9',
+      icon: <ExclamationCircleOutlined />
+    };
+    
+    switch(status) {
+      case 'PENDING': 
+        statusConfig = {
+          text: '待处理',
+          color: 'warning',
+          icon: <ExclamationCircleOutlined />
+        };
+        break;
+      case 'IN_TRANSIT': 
+        statusConfig = {
+          text: '运输中',
+          color: 'processing',
+          icon: <ClockCircleOutlined />
+        };
+        break;
+      case 'DELIVERED': 
+        statusConfig = {
+          text: '已完成',
+          color: 'success',
+          icon: <CheckCircleOutlined />
+        };
+        break;
+      case 'CANCELLED': 
+        statusConfig = {
+          text: '已取消',
+          color: 'default',
+          icon: <ExclamationCircleOutlined />
+        };
+        break;
+    }
+    
+    return (
+      <Tag color={statusConfig.color} icon={statusConfig.icon}>
+        {statusConfig.text}
+      </Tag>
+    );
+  };
+
   const columns = [
     { 
       title: '类型', 
       dataIndex: 'type', 
       key: 'type', 
-      width: 120,
+      width: 100,
       render: (type: string) => {
         const isInbound = type === 'INBOUND';
         return (
@@ -138,7 +186,7 @@ const Logistics = () => {
       title: '数量', 
       dataIndex: 'quantity', 
       key: 'quantity', 
-      width: 120,
+      width: 100,
       render: (qty: number) => (
         <span className="quantity">{qty} 件</span>
       )
@@ -148,8 +196,7 @@ const Logistics = () => {
       dataIndex: 'destination', 
       key: 'destination',
       width: 200,
-      ellipsis: true,
-      tooltip: (record: any) => record.destination
+      ellipsis: true
     },
     { 
       title: '创建时间', 
@@ -165,51 +212,8 @@ const Logistics = () => {
       title: '状态', 
       dataIndex: 'status', 
       key: 'status', 
-      width: 120,
-      render: (status: string) => {
-        let statusConfig: any = {
-          text: status,
-          color: '#d9d9d9',
-          icon: <ExclamationCircleOutlined />
-        };
-        
-        switch(status) {
-          case 'PENDING': 
-            statusConfig = {
-              text: '待处理',
-              color: 'warning',
-              icon: <ExclamationCircleOutlined />
-            };
-            break;
-          case 'IN_TRANSIT': 
-            statusConfig = {
-              text: '运输中',
-              color: 'processing',
-              icon: <ClockCircleOutlined />
-            };
-            break;
-          case 'DELIVERED': 
-            statusConfig = {
-              text: '已完成',
-              color: 'success',
-              icon: <CheckCircleOutlined />
-            };
-            break;
-          case 'CANCELLED': 
-            statusConfig = {
-              text: '已取消',
-              color: 'default',
-              icon: <ExclamationCircleOutlined />
-            };
-            break;
-        }
-        
-        return (
-          <Tag color={statusConfig.color} icon={statusConfig.icon}>
-            {statusConfig.text}
-          </Tag>
-        );
-      }
+      width: 110,
+      render: (status: string) => getStatusTag(status)
     },
     { 
       title: '操作', 
@@ -217,23 +221,30 @@ const Logistics = () => {
       width: 140,
       render: (_: any, record: any) => (
         <Space size="middle">
-          <Button 
+          <BizAction 
             type="primary" 
             icon={<EditOutlined />} 
             size="small"
             className="edit-btn"
+            onClick={(e) => {
+              e?.stopPropagation();
+              // 原有编辑逻辑
+            }}
           >
             编辑
-          </Button>
-          <Button 
+          </BizAction>
+          <BizAction 
             danger 
             icon={<DeleteOutlined />} 
             size="small"
             className="delete-btn"
-            onClick={() => handleDelete(record.id)}
+            onClick={(e) => {
+              e?.stopPropagation();
+              handleDelete(record.id);
+            }}
           >
             删除
-          </Button>
+          </BizAction>
         </Space>
       ),
     },
@@ -254,159 +265,141 @@ const Logistics = () => {
       </div>
       
       {/* Statistics Cards */}
-      <Row gutter={[24, 24]} className="logistics-stats">
+      <Row gutter={[16, 16]} className="logistics-stats">
         {/* Total Records */}
-        <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card total-card">
+        <Col xs={12} sm={12} md={6}>
+          <Card className="stat-card total-card" size="small">
             <Statistic
               title="总记录数"
               value={totalRecords}
               prefix={<BarChartOutlined />}
-              styles={{ content: { color: '#1890ff' } }}
+              valueStyle={{ color: '#1890ff', fontSize: '20px' }}
             />
           </Card>
         </Col>
         
         {/* Delivered */}
-        <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card delivered-card">
+        <Col xs={12} sm={12} md={6}>
+          <Card className="stat-card delivered-card" size="small">
             <Statistic
               title="已完成"
               value={deliveredRecords}
               prefix={<CheckCircleOutlined />}
-              styles={{ content: { color: '#52c41a' } }}
+              valueStyle={{ color: '#52c41a', fontSize: '20px' }}
               suffix={totalRecords > 0 ? `(${Math.round((deliveredRecords / totalRecords) * 100)}%)` : '(0%)'}
             />
           </Card>
         </Col>
         
         {/* In Transit */}
-        <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card transit-card">
+        <Col xs={12} sm={12} md={6}>
+          <Card className="stat-card transit-card" size="small">
             <Statistic
               title="运输中"
               value={inTransitRecords}
               prefix={<ClockCircleOutlined />}
-              styles={{ content: { color: '#faad14' } }}
+              valueStyle={{ color: '#faad14', fontSize: '20px' }}
               suffix={totalRecords > 0 ? `(${Math.round((inTransitRecords / totalRecords) * 100)}%)` : '(0%)'}
             />
           </Card>
         </Col>
         
         {/* Pending */}
-        <Col xs={24} sm={12} md={6}>
-          <Card className="stat-card pending-card">
+        <Col xs={12} sm={12} md={6}>
+          <Card className="stat-card pending-card" size="small">
             <Statistic
               title="待处理"
               value={pendingRecords}
               prefix={<ExclamationCircleOutlined />}
-              styles={{ content: { color: '#ff7875' } }}
+              valueStyle={{ color: '#ff7875', fontSize: '20px' }}
               suffix={totalRecords > 0 ? `(${Math.round((pendingRecords / totalRecords) * 100)}%)` : '(0%)'}
             />
           </Card>
         </Col>
       </Row>
       
-      {/* Type Distribution */}
-      <Card className="distribution-card">
-        <div className="distribution-content">
-          <h3 className="distribution-title">物流类型分布</h3>
-          <div className="distribution-stats">
-            <div className="distribution-item inbound">
-              <div className="distribution-icon">
-                <InboxOutlined />
-              </div>
-              <div className="distribution-info">
-                <div className="distribution-value">{inboundRecords}</div>
-                <div className="distribution-label">入库记录</div>
-              </div>
-            </div>
-            <div className="distribution-item outbound">
-              <div className="distribution-icon">
-                <InboxOutlined />
-              </div>
-              <div className="distribution-info">
-                <div className="distribution-value">{outboundRecords}</div>
-                <div className="distribution-label">出库记录</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-      
       {/* Filters */}
-      <Card className="filters-card" variant="outlined">
+      <Card className="filters-card" variant="outlined" style={{ marginBottom: 16 }}>
         <div className="filters-content">
-          <div className="filter-group">
-            <div className="filter-item">
-              <Input
-                placeholder="搜索产品/来源/目的地"
-                prefix={<SearchOutlined />}
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                style={{ width: 240 }}
-              />
-            </div>
-            
-            <div className="filter-item">
-              <Select 
-                placeholder="选择类型" 
-                style={{ width: 120 }}
-                value={selectedType}
-                onChange={setSelectedType}
-              >
-                <Option value="all">全部类型</Option>
-                <Option value="inbound">入库</Option>
-                <Option value="outbound">出库</Option>
-              </Select>
-            </div>
-            
-            <div className="filter-item">
-              <Select 
-                placeholder="选择状态" 
-                style={{ width: 120 }}
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-              >
-                <Option value="all">全部状态</Option>
-                <Option value="pending">待处理</Option>
-                <Option value="in_transit">运输中</Option>
-                <Option value="delivered">已完成</Option>
-              </Select>
-            </div>
-            
-            <div className="filter-item">
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />}
-                className="add-btn"
-              >
-                新建入库/出库记录
-              </Button>
-            </div>
+          <div className="filter-group" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Input
+              placeholder="产品名称/目的地"
+              prefix={<SearchOutlined />}
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              style={{ width: 200 }}
+            />
+            <Select 
+              placeholder="选择类型" 
+              style={{ width: 110 }}
+              value={selectedType}
+              onChange={setSelectedType}
+            >
+              <Option value="all">全部类型</Option>
+              <Option value="inbound">入库</Option>
+              <Option value="outbound">出库</Option>
+            </Select>
+            <Select 
+              placeholder="选择状态" 
+              style={{ width: 110 }}
+              value={selectedStatus}
+              onChange={setSelectedStatus}
+            >
+              <Option value="all">全部状态</Option>
+              <Option value="pending">待处理</Option>
+              <Option value="in_transit">运输中</Option>
+              <Option value="delivered">已完成</Option>
+            </Select>
+            <BizAction 
+              type="primary" 
+              icon={<PlusOutlined />}
+              className="add-btn"
+            >
+              新建记录
+            </BizAction>
           </div>
         </div>
       </Card>
       
       {/* Logistics Records Table */}
-      <Card className="records-card" variant="outlined">
-        <div className="table-header">
-          <h3>物流记录列表</h3>
-          <span className="record-count">共 {filteredRecords.length} 条记录</span>
-        </div>
-        <Table 
-          columns={columns} 
-          dataSource={filteredRecords} 
-          rowKey="id" 
+      <Card title="物流记录列表" variant="outlined">
+        <ResponsiveDataList
+          columns={columns}
+          dataSource={filteredRecords}
+          rowKey="id"
+          loading={loading}
           pagination={{ 
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条记录`,
-            pageSizeOptions: ['10', '20', '50', '100']
-          }} 
-          className="logistics-table"
-          scroll={{ x: 1000 }}
-          loading={loading}
+            showTotal: (total) => `共 ${total} 条`
+          }}
+          onRowClick={(record) => {
+            if (isReadonly) {
+              navigate(`/logistics/${record.id}`);
+            }
+          }}
+          mobileRenderItem={(record) => (
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space>
+                  <Tag color={record.type === 'INBOUND' ? 'success' : 'error'} size="small">
+                    {record.type === 'INBOUND' ? '入库' : '出库'}
+                  </Tag>
+                  <strong style={{ fontSize: 15 }}>{record.productName}</strong>
+                </Space>
+                {getStatusTag(record.status)}
+              </Space>
+              <div style={{ fontSize: 13, color: '#666' }}>
+                数量：<span style={{ color: '#1890ff', fontWeight: 600 }}>{record.quantity}</span> 件
+              </div>
+              <div style={{ fontSize: 13, color: '#666' }}>
+                目的地：{record.destination || '-'}
+              </div>
+              <div style={{ fontSize: 12, color: '#999' }}>
+                创建时间：{new Date(record.createdAt).toLocaleString('zh-CN')}
+              </div>
+            </Space>
+          )}
         />
       </Card>
     </div>
@@ -414,3 +407,4 @@ const Logistics = () => {
 };
 
 export default Logistics;
+
