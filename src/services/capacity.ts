@@ -125,6 +125,27 @@ export const capacityApi = {
   }): Promise<any> => {
     return get<any>('/capacity/statistics', params);
   },
+
+  // 组长填报相关 (H5专用)
+  // 获取组长填报初始化数据
+  getGroupEntryInit: (params: { token: string; date: string }): Promise<any> => {
+    return get<any>('/capacity/group-entry/init', params);
+  },
+
+  // 保存小组产能记录
+  saveGroupCapacity: (params: {
+    token: string;
+    date: string;
+    groupId: string;
+    records: { employeeId: string; quantity: number; remark: string }[];
+  }): Promise<any> => {
+    return post<any>('/capacity/group-entry/save', params);
+  },
+
+  // 厂区管理：为指定厂区生成微信群入口 Token
+  generateGroupToken: (factoryId: string): Promise<any> => {
+    return post<any>(`/factory/${factoryId}/group-entry-token`);
+  },
 };
 
 export default capacityApi;
