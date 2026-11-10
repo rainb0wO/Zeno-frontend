@@ -1,105 +1,45 @@
-import request from './request';
+import { readNamedList } from '../domain/apiEnvelope';
+import { apiGet, apiPost, apiPut } from './http';
+import { endpoints } from './endpoints';
 
-// 工序相关接口
 export interface ProcessStep {
   name: string;
   equipment?: string;
   standardTime?: number;
-  qualityRequirement?: string;
   description?: string;
 }
 
-export interface Process extends ProcessStep {
+export interface ProcessRecord extends ProcessStep {
   id: string;
-  planId: string;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface GenerateProcessParams {
-  clothingType: string;
-  craftType: string;
-  material: string;
-}
-
-export interface CreateProcessesParams {
-  planId: string;
-  processes: ProcessStep[];
-}
-
-export interface UpdateProcessParams {
-  name?: string;
+  planId?: string;
   sortOrder?: number;
-  equipment?: string;
-  standardTime?: number;
-  qualityRequirement?: string;
-  description?: string;
 }
 
-export interface TemplateOptions {
-  clothingTypes: string[];
-  craftTypes: string[];
-  materials: string[];
-}
-
-export interface ProcessTemplate {
-  id: string;
-  name: string;
+export interface GenerateProcessInput {
   clothingType: string;
   craftType: string;
   material: string;
-  processes: ProcessStep[];
-  source?: 'PRESET' | 'AI_GENERATED' | 'MANUAL';
-  createdAt?: string;
+  planId?: string;
 }
-
-export interface TemplatesData {
-  templates: ProcessTemplate[];
-  grouped: Record<string, ProcessTemplate[]>;
-}
-
-// 获取工序模板选项
-export const getTemplateOptions = () => {
-  return request.get<TemplateOptions>('/processes/template-options');
-};
-
-// 生成工序名
-export const generateProcesses = (params: GenerateProcessParams) => {
-  return request.post<{ processes: ProcessStep[]; matched: boolean; source?: string }>('/processes/generate', params);
-};
-
-// 获取生产计划的工序列表
-export const getProcessesByPlan = (planId: string) => {
-  return request.get<Process[]>(`/processes/plan/${planId}`);
-};
-
-// 批量创建工序
-export const createProcesses = (params: CreateProcessesParams) => {
-  return request.post<{ count: number; processes: Process[] }>('/processes', params);
-};
-
-// 更新工序
-export const updateProcess = (id: string, params: UpdateProcessParams) => {
-  return request.put<Process>(`/processes/${id}`, params);
-};
-
-// 删除工序
-export const deleteProcess = (id: string) => {
-  return request.delete(`/processes/${id}`);
-};
-
-// 获取所有模板
-export const getTemplates = () => {
-  return request.get<TemplatesData>('/processes/templates');
-};
 
 export const processApi = {
-  getTemplateOptions,
-  getTemplates,
-  generateProcesses,
-  getProcessesByPlan,
-  createProcesses,
-  updateProcess,
-  deleteProcess
+  listByPlan: async (planId: string) => {
+    const result = await apiGet<unknown>(endpoints.planProcesses(planId));
+    return readNamedList<ProcessRecord>(result.data, 'processes');
+  },
+
+  generate: async (input: GenerateProcessInput) => {
+    const result = await apiPost<unknown>(endpoints.generateProcesses, input);
+    return readNamedList<ProcessStep>(result.data, 'processes');
+  },
+
+  save: async (planId: string, processes: ProcessStep[]) => {
+    const result = await apiPost<unknown>(endpoints.processes, { planId, processes });
+    return { message: result.message, processes: readNamedList<ProcessRecord>(result.data, 'processes') };
+  },
+
+  update: async (id: string, input: ProcessStep) => {
+    const result = await apiPut<unknown>(endpoints.process(id), input);
+    return result.message;
+  },
 };

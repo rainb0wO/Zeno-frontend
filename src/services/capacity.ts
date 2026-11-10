@@ -1,154 +1,74 @@
-import { get, post, put, del } from './request';
+import { readNamedList } from '../domain/apiEnvelope';
+import { apiDelete, apiGet, apiPost, apiPut } from './http';
+import { endpoints } from './endpoints';
 
-// 生产计划类型
 export interface ProductionPlan {
   id: string;
-  factoryId: string;
+  factoryId?: string;
   productName: string;
   targetQty: number;
   actualQty?: number;
-  progress?: number;
   startDate: string;
   endDate: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
-  priorityLevel?: string;
-  isManualPriority?: boolean;
-  priorityScore?: number;
-  createdAt: string;
-  updatedAt: string;
+  status?: string;
+  clothingType?: string | null;
+  craftType?: string | null;
+  material?: string | null;
 }
 
-// 生产记录类型
-export interface ProductionRecord {
-  id: string;
-  productionPlanId: string;
-  employeeId: string;
-  date: string;
-  actualQty: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 产能统计类型
-export interface CapacityStatistics {
-  totalPlans: number;
-  completedPlans: number;
-  inProgressPlans: number;
-  totalTargetQty: number;
-  totalActualQty: number;
-  capacityUtilization: number;
-}
-
-// 创建生产计划参数
-export interface CreateProductionPlanParams {
+export interface PlanInput {
   productName: string;
   targetQty: number;
   startDate: string;
   endDate: string;
   factoryId: string;
-  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
+  clothingType?: string;
+  craftType?: string;
+  material?: string;
 }
 
-// 更新生产计划参数
-export interface UpdateProductionPlanParams {
-  productName?: string;
-  targetQty?: number;
-  startDate?: string;
-  endDate?: string;
-  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
-}
-
-// 创建生产记录参数
-export interface CreateProductionRecordParams {
-  productionPlanId: string;
-  employeeId: string;
-  date: string;
-  actualQty: number;
-}
-
-// 产能管理API
-export const capacityApi = {
-  // 获取生产计划列表
-  getProductionPlans: (params?: {
-    factoryId?: string;
-    status?: string;
-    dateRange?: string;
-  }): Promise<any> => {
-    return get<any>('/capacity/production-plans', params);
-  },
-
-  // 获取生产计划详情
-  getProductionPlanById: (id: string): Promise<any> => {
-    return get<any>(`/capacity/production-plans/${id}`);
-  },
-
-  // 创建生产计划
-  createProductionPlan: (params: CreateProductionPlanParams): Promise<any> => {
-    return post<any>('/capacity/production-plans', params);
-  },
-
-  // 更新生产计划
-  updateProductionPlan: (id: string, params: UpdateProductionPlanParams): Promise<any> => {
-    return put<any>(`/capacity/production-plans/${id}`, params);
-  },
-
-  // 删除生产计划
-  deleteProductionPlan: (id: string): Promise<any> => {
-    return del<any>(`/capacity/production-plans/${id}`);
-  },
-
-  // 获取生产记录
-  getProductionRecords: (params?: {
-    productionPlanId?: string;
-    employeeId?: string;
-    date?: string;
-  }): Promise<any> => {
-    return get<any>('/capacity/production-records', params);
-  },
-
-  // 创建生产记录
-  createProductionRecord: (params: CreateProductionRecordParams): Promise<any> => {
-    return post<any>('/capacity/production-records', params);
-  },
-
-  // 更新生产记录
-  updateProductionRecord: (id: string, params: { actualQty: number }): Promise<any> => {
-    return put<any>(`/capacity/production-records/${id}`, params);
-  },
-
-  // 删除生产记录
-  deleteProductionRecord: (id: string): Promise<any> => {
-    return del<any>(`/capacity/production-records/${id}`);
-  },
-
-  // 获取产能统计
-  getCapacityStatistics: (params?: {
-    factoryId?: string;
-    dateRange?: string;
-  }): Promise<any> => {
-    return get<any>('/capacity/statistics', params);
-  },
-
-  // 组长填报相关 (H5专用)
-  // 获取组长填报初始化数据
-  getGroupEntryInit: (params: { token: string; date: string }): Promise<any> => {
-    return get<any>('/capacity/group-entry/init', params);
-  },
-
-  // 保存小组产能记录
-  saveGroupCapacity: (params: {
-    token: string;
-    date: string;
-    groupId: string;
-    records: { employeeId: string; quantity: number; remark: string }[];
-  }): Promise<any> => {
-    return post<any>('/capacity/group-entry/save', params);
-  },
-
-  // 厂区管理：为指定厂区生成微信群入口 Token
-  generateGroupToken: (factoryId: string): Promise<any> => {
-    return post<any>(`/factory/${factoryId}/group-entry-token`);
-  },
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: '待开始',
+  IN_PROGRESS: '进行中',
+  COMPLETED: '已完成',
+  DELAYED: '延期',
 };
 
-export default capacityApi;
+export function planStatusLabel(status?: string): string {
+  if (!status) return '未设置';
+  return STATUS_LABEL[status] || status;
+}
+
+function readPlan(data: unknown): ProductionPlan {
+  const body = (data && typeof data === 'object' ? data : {}) as { plan?: ProductionPlan; productionPlan?: ProductionPlan };
+  return body.plan || body.productionPlan || (data as ProductionPlan);
+}
+
+export const capacityApi = {
+  list: async (factoryId?: string) => {
+    const result = await apiGet<unknown>(endpoints.plans, factoryId ? { factoryId } : undefined);
+    return readNamedList<ProductionPlan>(result.data, 'plans').length
+      ? readNamedList<ProductionPlan>(result.data, 'plans')
+      : readNamedList<ProductionPlan>(result.data, 'productionPlans');
+  },
+
+  get: async (id: string) => {
+    const result = await apiGet<unknown>(endpoints.plan(id));
+    return readPlan(result.data);
+  },
+
+  create: async (input: PlanInput) => {
+    const result = await apiPost<unknown>(endpoints.plans, input);
+    return { message: result.message, plan: readPlan(result.data) };
+  },
+
+  update: async (id: string, input: Partial<PlanInput>) => {
+    const result = await apiPut<unknown>(endpoints.plan(id), input);
+    return result.message;
+  },
+
+  remove: async (id: string) => {
+    const result = await apiDelete<unknown>(endpoints.plan(id));
+    return result.message;
+  },
+};

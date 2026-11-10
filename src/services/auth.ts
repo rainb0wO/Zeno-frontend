@@ -1,79 +1,73 @@
-import { get, post } from './request';
+import { apiGet, apiPost } from './http';
+import { endpoints } from './endpoints';
+import type { UserRole } from '../domain/roles';
 
-// 用户信息类型
 export interface User {
   id: string;
   username: string;
-  email: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'USER';
-  factoryId?: string;
-  createdAt: string;
+  role: UserRole | string;
+  factoryId?: string | null;
+  phone?: string | null;
+  createdAt?: string;
 }
 
-// 登录参数
-export interface LoginParams {
-  account: string;
-  password: string;
-}
-
-// 注册参数
-export interface RegisterParams {
-  username: string;
-  companyName: string; // 企业名称（必填）
-  phone?: string;      // 手机号（选填）
-  email?: string;      // 邮箱（选填）
-  password: string;
-  confirmPassword: string;
-}
-
-// 登录响应
-export interface LoginResponse {
-  message: string;
+export interface AuthSession {
   token: string;
   user: User;
 }
 
-// 注册响应
-export interface RegisterResponse {
-  message: string;
-  user: User;
-  token: string; // 注册成功后返回token以便自动登录
+export interface LoginParams {
+  username: string;
+  password: string;
 }
 
-// 认证API
+export interface RegisterParams {
+  username: string;
+  password: string;
+  factoryName: string;
+  phone?: string;
+}
+
+function readSession(data: unknown): AuthSession {
+  const body = (data && typeof data === 'object' ? data : {}) as { token?: unknown; user?: User };
+  if (typeof body.token !== 'string' || !body.user) {
+    throw new Error('登录响应缺少 token 或用户信息');
+  }
+  const token = body.token.startsWith('Bearer ') ? body.token.slice(7) : body.token;
+  return { token, user: body.user };
+}
+
 export const authApi = {
-  // 获取验证码（返回完整URL）
-  getCaptcha: (): string => {
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
-    return `${BASE_URL}/auth/captcha?t=${Date.now()}`;
+  login: async (params: LoginParams) => {
+    const result = await apiPost<unknown>(endpoints.login, params, { skipErrorToast: true });
+    return { message: result.message, ...readSession(result.data) };
   },
 
-  // 用户登录
-  login: (params: LoginParams): Promise<LoginResponse> => {
-    return post<LoginResponse>('/auth/login', params);
+  register: async (params: RegisterParams) => {
+    const result = await apiPost<unknown>(endpoints.register, params, { skipErrorToast: true });
+    return { message: result.message, ...readSession(result.data) };
   },
 
-  // 用户注册
-  register: (params: RegisterParams): Promise<RegisterResponse> => {
-    return post<RegisterResponse>('/auth/register', params);
+  me: async () => {
+    const result = await apiGet<{ user: User } | User>(endpoints.me);
+    const data = result.data;
+    const user = data && typeof data === 'object' && 'user' in data ? data.user : data as User;
+    return user;
   },
 
-  // 获取当前用户信息
-  getCurrentUser: (): Promise<{ user: User }> => {
-    return get<{ user: User }>('/auth/me');
+  switchFactory: async (factoryId: string) => {
+    const result = await apiPost<{ user?: User; factoryId?: string }>(endpoints.switchFactory, { factoryId });
+    return { message: result.message, user: result.data?.user, factoryId: result.data?.factoryId || result.data?.user?.factoryId || factoryId };
   },
 
-  // 切换当前厂区
-  switchFactory: (factoryId: string): Promise<{ user: User; message: string }> => {
-    return post<{ user: User; message: string }>('/auth/switch-factory', { factoryId });
-  },
-
-  // 退出登录
-  logout: (): void => {
+  logout: async () => {
+    try {
+      await apiPost(endpoints.logout, {}, { skipErrorToast: true, skipAuthRedirect: true });
+    } catch {
+      // 本地会话仍要清掉，避免登出接口失败时把人留在已登录界面。
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login';
   },
 };
-
-export default authApi;

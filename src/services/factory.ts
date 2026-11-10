@@ -1,61 +1,57 @@
-import { get, post, put, del } from './request';
+import { readNamedList } from '../domain/apiEnvelope';
+import { readRotatedToken } from '../domain/groupEntry';
+import { apiDelete, apiGet, apiPost, apiPut } from './http';
+import { endpoints } from './endpoints';
 
-// 厂区信息类型
 export interface Factory {
   id: string;
   name: string;
-  address: string;
-  contactPerson: string;
-  contactPhone: string;
-  managementMode: string;
-  createdAt: string;
-  updatedAt: string;
+  address?: string | null;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
+  createdAt?: string;
 }
 
-// 创建厂区参数
-export interface CreateFactoryParams {
+export interface FactoryInput {
   name: string;
-  address: string;
-  contactPerson: string;
-  contactPhone: string;
-  managementMode: string;
-}
-
-// 更新厂区参数
-export interface UpdateFactoryParams {
-  name?: string;
   address?: string;
   contactPerson?: string;
   contactPhone?: string;
-  managementMode?: string;
 }
 
-// 厂区API
+function readFactory(data: unknown): Factory {
+  const body = (data && typeof data === 'object' ? data : {}) as { factory?: Factory };
+  return body.factory || (data as Factory);
+}
+
 export const factoryApi = {
-  // 获取厂区列表
-  getFactories: (): Promise<{ factories: Factory[] }> => {
-    return get<{ factories: Factory[] }>('/factories');
+  list: async () => {
+    const result = await apiGet<unknown>(endpoints.factories);
+    return readNamedList<Factory>(result.data, 'factories');
   },
 
-  // 获取厂区详情
-  getFactoryById: (id: string): Promise<{ factory: Factory }> => {
-    return get<{ factory: Factory }>(`/factories/${id}`);
+  get: async (id: string) => {
+    const result = await apiGet<unknown>(endpoints.factory(id));
+    return readFactory(result.data);
   },
 
-  // 创建厂区
-  createFactory: (params: CreateFactoryParams): Promise<{ message: string; factory: Factory }> => {
-    return post<{ message: string; factory: Factory }>('/factories', params);
+  create: async (input: FactoryInput) => {
+    const result = await apiPost<unknown>(endpoints.factories, input);
+    return { message: result.message, factory: readFactory(result.data) };
   },
 
-  // 更新厂区
-  updateFactory: (id: string, params: UpdateFactoryParams): Promise<{ message: string; factory: Factory }> => {
-    return put<{ message: string; factory: Factory }>(`/factories/${id}`, params);
+  update: async (id: string, input: Partial<FactoryInput>) => {
+    const result = await apiPut<unknown>(endpoints.factory(id), input);
+    return result.message;
   },
 
-  // 删除厂区
-  deleteFactory: (id: string): Promise<{ message: string }> => {
-    return del<{ message: string }>(`/factories/${id}`);
+  remove: async (id: string) => {
+    const result = await apiDelete<unknown>(endpoints.factory(id));
+    return result.message;
+  },
+
+  rotateGroupToken: async (id: string) => {
+    const result = await apiPost<unknown>(endpoints.rotateGroupToken(id));
+    return { message: result.message, ...readRotatedToken(result.data) };
   },
 };
-
-export default factoryApi;

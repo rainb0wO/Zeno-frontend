@@ -1,225 +1,173 @@
-import { useState, useEffect } from 'react';
-import { useFactoryStore } from '../../stores/factoryStore';
-import { Card, Space, Modal, Form, Input, Select, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { factoryApi } from '../../services/factory';
-import type { Factory as FactoryType, CreateFactoryParams } from '../../services/factory';
-import BizAction from '../../components/BizAction';
-import { useReadonly } from '../../contexts/ReadonlyContext';
-import ResponsiveDataList from '../../components/ResponsiveDataList';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Form, Input, Modal, Space, Table, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { readErrorMessage } from '../../domain/apiEnvelope';
+import { buildGroupEntryLink } from '../../domain/groupEntry';
+import { useAccess } from '../../hooks/useAccess';
+import { factoryApi, type Factory, type FactoryInput } from '../../services/factory';
 
-const { Option } = Select;
-
-const Factory = () => {
-  const { setFactories: setGlobalFactories } = useFactoryStore();
-  const { isReadonly, showTip } = useReadonly();
+const FactoryPage = () => {
   const navigate = useNavigate();
-  const [factories, setFactories] = useState<FactoryType[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
-  const [currentFactory, setCurrentFactory] = useState<FactoryType | null>(null);
-  const [form] = Form.useForm();
+  const { isAdmin } = useAccess();
+  const [form] = Form.useForm<FactoryInput>();
+  const [rows, setRows] = useState<Factory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Factory | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // 初始化数据
-  useEffect(() => {
-    fetchFactories();
-  }, []);
-
-  const fetchFactories = async () => {
+  const load = async () => {
     setLoading(true);
+    setError('');
     try {
-      const response = await factoryApi.getFactories();
-      setFactories(response.factories);
-      setGlobalFactories(response.factories);
-    } catch (error) {
-      console.error('获取厂区列表失败:', error);
-      message.error('获取厂区列表失败');
+      setRows(await factoryApi.list());
+    } catch (err) {
+      setError(readErrorMessage(err, '厂区列表加载失败'));
     } finally {
       setLoading(false);
     }
   };
 
-  const showAddModal = () => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    setIsEdit(false);
-    setCurrentFactory(null);
+  useEffect(() => {
+    load();
+  }, []);
+
+  const openCreate = () => {
+    setEditing(null);
     form.resetFields();
-    setModalVisible(true);
+    setOpen(true);
   };
 
-  const showEditModal = (factory: FactoryType) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    setIsEdit(true);
-    setCurrentFactory(factory);
-    form.setFieldsValue(factory);
-    setModalVisible(true);
+  const openEdit = (factory: Factory) => {
+    setEditing(factory);
+    form.setFieldsValue({
+      name: factory.name,
+      address: factory.address || '',
+      contactPerson: factory.contactPerson || '',
+      contactPhone: factory.contactPhone || '',
+    });
+    setOpen(true);
   };
 
-  const handleModalCancel = () => {
-    setModalVisible(false);
-  };
-
-  const handleModalOk = async () => {
+  const submit = async () => {
+    const values = await form.validateFields();
+    setSaving(true);
     try {
-      const values = await form.validateFields();
-      
-      if (isEdit && currentFactory) {
-        // 更新厂区
-        await factoryApi.updateFactory(currentFactory.id, values);
-        message.success('厂区更新成功');
+      if (editing) {
+        const text = await factoryApi.update(editing.id, values);
+        message.success(text);
       } else {
-        // 创建厂区
-        await factoryApi.createFactory(values as CreateFactoryParams);
-        message.success('厂区创建成功');
+        const created = await factoryApi.create(values);
+        message.success(created.message);
       }
-      
-      setModalVisible(false);
-      fetchFactories(); // 重新加载数据
-    } catch (error) {
-      console.error('操作失败:', error);
-      message.error('操作失败');
+      setOpen(false);
+      await load();
+    } catch (err) {
+      message.error(readErrorMessage(err));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
+  const remove = (factory: Factory) => {
     Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除这个厂区吗？删除后不可恢复。',
+      title: `删除厂区「${factory.name}」？`,
+      content: '只删除你有权限管理的厂区。已有生产和人员数据时，后端可能会拒绝。',
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
       onOk: async () => {
-        try {
-          await factoryApi.deleteFactory(id);
-          message.success('厂区删除成功');
-          fetchFactories(); // 重新加载数据
-        } catch (error) {
-          console.error('删除失败:', error);
-          message.error('删除失败');
-        }
-      }
+        const text = await factoryApi.remove(factory.id);
+        message.success(text);
+        await load();
+      },
     });
   };
 
-  const columns = [
-    { title: '厂区名称', dataIndex: 'name', key: 'name' },
-    { title: '地址', dataIndex: 'address', key: 'address' },
-    { title: '联系人', dataIndex: 'contactPerson', key: 'contactPerson' },
-    { title: '联系电话', dataIndex: 'contactPhone', key: 'contactPhone' },
-    { title: '管理模式', dataIndex: 'managementMode', key: 'managementMode' },
-    { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', render: (text: string) => new Date(text).toLocaleDateString('zh-CN') },
-    { 
-      title: '操作', 
-      key: 'action', 
-      render: (_: any, record: FactoryType) => (
-        <Space size="middle">
-          <BizAction type="primary" icon={<EditOutlined />} size="small" onClick={() => showEditModal(record)}>
-            编辑
-          </BizAction>
-          <BizAction danger icon={<DeleteOutlined />} size="small" onClick={() => handleDelete(record.id)}>
-            删除
-          </BizAction>
-        </Space>
-      ),
-    },
-  ];
+  const rotate = async (factory: Factory) => {
+    try {
+      const result = await factoryApi.rotateGroupToken(factory.id);
+      if (!result.token && !result.url) {
+        message.error('后端没有返回新的群入口令牌');
+        return;
+      }
+      const link = result.url || buildGroupEntryLink(window.location.origin, result.token);
+      Modal.success({
+        title: '新的微信群入口已生成',
+        content: (
+          <div>
+            <p>旧链接已失效。把下面的地址发到组长微信群：</p>
+            <Input.TextArea value={link} readOnly autoSize />
+          </div>
+        ),
+        okText: '复制链接',
+        onOk: async () => {
+          try {
+            await navigator.clipboard.writeText(link);
+            message.success('已复制');
+          } catch {
+            message.info('请手动复制链接');
+          }
+        },
+      });
+    } catch (err) {
+      message.error(readErrorMessage(err, '轮换群入口失败'));
+    }
+  };
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <h1>厂区管理</h1>
-        <BizAction type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
-          新建厂区
-        </BizAction>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+        <h1>厂区</h1>
+        {isAdmin && <Button type="primary" onClick={openCreate}>新建厂区</Button>}
       </div>
-      
-      <Card title="厂区列表" variant="outlined">
-        <ResponsiveDataList
-          columns={columns}
-          dataSource={factories}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          onRowClick={(record) => {
-            navigate(`/factory/${record.id}`);
-          }}
-          mobileRenderItem={(record) => (
-            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-              <div style={{ fontWeight: 600 }}>{record.name}</div>
-              <div style={{ fontSize: 12, color: '#666' }}>联系人：{record.contactPerson}</div>
-              <div style={{ fontSize: 12, color: '#666' }}>电话：{record.contactPhone}</div>
-              <div style={{ fontSize: 12, color: '#666' }}>
-                地址：{record.address}
-              </div>
-            </Space>
-          )}
-        />
-      </Card>
-      
+      <p style={{ color: '#666' }}>这里只列出你已加入的厂区。切换厂区请用顶栏。</p>
+      {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <Table
+        rowKey="id"
+        loading={loading}
+        dataSource={rows}
+        locale={{ emptyText: '还没有可管理的厂区' }}
+        scroll={{ x: 720 }}
+        columns={[
+          { title: '名称', dataIndex: 'name' },
+          { title: '地址', dataIndex: 'address', render: (value) => value || '-' },
+          { title: '联系人', dataIndex: 'contactPerson', render: (value) => value || '-' },
+          { title: '电话', dataIndex: 'contactPhone', render: (value) => value || '-' },
+          {
+            title: '操作',
+            render: (_, factory) => (
+              <Space wrap>
+                <Button size="small" onClick={() => navigate(`/factory/${factory.id}`)}>详情</Button>
+                {isAdmin && <Button size="small" onClick={() => rotate(factory)}>轮换群入口</Button>}
+                {isAdmin && <Button size="small" onClick={() => openEdit(factory)}>编辑</Button>}
+                {isAdmin && <Button size="small" danger onClick={() => remove(factory)}>删除</Button>}
+              </Space>
+            ),
+          },
+        ]}
+      />
       <Modal
-        title={isEdit ? '编辑厂区' : '新建厂区'}
-        open={modalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        width={600}
+        title={editing ? '编辑厂区' : '新建厂区'}
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={submit}
+        confirmLoading={saving}
+        okText="保存"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="厂区名称"
-            rules={[{ required: true, message: '请输入厂区名称!' }]}
-          >
-            <Input placeholder="请输入厂区名称" />
+          <Form.Item name="name" label="厂区名称" rules={[{ required: true, message: '请输入名称' }]}>
+            <Input />
           </Form.Item>
-          
-          <Form.Item
-            name="address"
-            label="地址"
-            rules={[{ required: true, message: '请输入厂区地址!' }]}
-          >
-            <Input.TextArea placeholder="请输入厂区地址" rows={3} />
-          </Form.Item>
-          
-          <Form.Item
-            name="contactPerson"
-            label="联系人"
-            rules={[{ required: true, message: '请输入联系人!' }]}
-          >
-            <Input placeholder="请输入联系人姓名" />
-          </Form.Item>
-          
-          <Form.Item
-            name="contactPhone"
-            label="联系电话"
-            rules={[{ required: true, message: '请输入联系电话!' }, { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码!' }]}
-          >
-            <Input placeholder="请输入联系电话" />
-          </Form.Item>
-          
-          <Form.Item
-            name="managementMode"
-            label="管理模式"
-            rules={[{ required: true, message: '请选择管理模式!' }]}
-          >
-            <Select placeholder="请选择管理模式">
-              <Option value="standard">标准模式</Option>
-              <Option value="lean">精益模式</Option>
-              <Option value="agile">敏捷模式</Option>
-            </Select>
-          </Form.Item>
+          <Form.Item name="address" label="地址"><Input /></Form.Item>
+          <Form.Item name="contactPerson" label="联系人"><Input /></Form.Item>
+          <Form.Item name="contactPhone" label="联系电话"><Input /></Form.Item>
         </Form>
       </Modal>
     </div>
   );
 };
 
-export default Factory;
+export default FactoryPage;

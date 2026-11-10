@@ -1,249 +1,137 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, DatePicker, InputNumber, Spin, message } from 'antd';
 import { useSearchParams } from 'react-router-dom';
-import { Alert, Button, Card, DatePicker, Input, InputNumber, message, Select, Space, Spin, Table } from 'antd';
-import dayjs, { Dayjs } from 'dayjs';
-
-type Employee = {
-  id: string;
-  employeeId?: string;
-  name: string;
-};
-
-type Group = {
-  id: string;
-  name: string;
-  employees: Employee[];
-};
-
-type FactoryInfo = {
-  id: string;
-  name: string;
-};
-
-type FormValue = {
-  quantity?: number | null;
-  remark?: string;
-};
+import dayjs, { type Dayjs } from 'dayjs';
+import { readErrorMessage } from '../../domain/apiEnvelope';
+import type { GroupInitView } from '../../domain/groupEntry';
+import { groupEntryApi } from '../../services/groupEntry';
 
 const GroupCapacityEntry = () => {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
-
+  const [params] = useSearchParams();
+  const token = params.get('token') || '';
+  const [date, setDate] = useState<Dayjs>(dayjs());
+  const [view, setView] = useState<GroupInitView | null>(null);
+  const [quantities, setQuantities] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const [factory, setFactory] = useState<FactoryInfo | null>(null);
-  const [date, setDate] = useState<Dayjs>(dayjs());
-  const [editable, setEditable] = useState<boolean>(true);
-
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [currentGroupId, setCurrentGroupId] = useState<string>('');
-
-  const [formValues, setFormValues] = useState<Record<string, FormValue>>({});
-
-  useEffect(() => {
+  const load = async (nextDate: Dayjs) => {
+    if (!token) return;
     setLoading(true);
+    setError('');
     try {
-      const mockFactory: FactoryInfo = { id: 'f1', name: '一厂' };
-      const mockGroups: Group[] = [
-        {
-          id: 'g1',
-          name: '一组',
-          employees: [
-            { id: '1', employeeId: 'EMP001', name: '张三' },
-            { id: '2', employeeId: 'EMP002', name: '李四' },
-          ],
-        },
-        {
-          id: 'g2',
-          name: '二组',
-          employees: [{ id: '3', employeeId: 'EMP003', name: '王五' }],
-        },
-      ];
-
-      const mockValues: Record<string, FormValue> = {
-        '1': { quantity: 100, remark: '' },
-        '2': { quantity: 90, remark: '新人' },
-        '3': { quantity: 110, remark: '' },
-      };
-
-      setFactory(mockFactory);
-      setGroups(mockGroups);
-      setCurrentGroupId(mockGroups[0]?.id || '');
-      setFormValues(mockValues);
-
-      setEditable(true);
+      const data = await groupEntryApi.init(token, nextDate.format('YYYY-MM-DD'));
+      const initial: Record<string, number | null> = {};
+      data.groups.forEach((group) => {
+        group.employees.forEach((employee) => {
+          initial[employee.id] = employee.quantity;
+        });
+      });
+      setView(data);
+      setQuantities(initial);
+    } catch (err) {
+      setView(null);
+      setError(readErrorMessage(err, '链接无效或已失效'));
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const currentGroup = useMemo(() => {
-    return groups.find((g) => g.id === currentGroupId) || null;
-  }, [groups, currentGroupId]);
-
-  const handleQuantityChange = (employeeId: string, value: number | null) => {
-    setFormValues((prev) => ({
-      ...prev,
-      [employeeId]: {
-        ...prev[employeeId],
-        quantity: value,
-      },
-    }));
   };
 
-  const handleRemarkChange = (employeeId: string, value: string) => {
-    setFormValues((prev) => ({
-      ...prev,
-      [employeeId]: {
-        ...prev[employeeId],
-        remark: value,
-      },
+  useEffect(() => {
+    if (!token) return;
+    load(dayjs());
+    // 只在令牌变化时拉一次；改日期由日期控件单独触发。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const employeeCount = useMemo(
+    () => view?.groups.reduce((sum, group) => sum + group.employees.length, 0) ?? 0,
+    [view],
+  );
+
+  const save = async () => {
+    if (!view) return;
+    const records = view.groups.flatMap((group) => group.employees.flatMap((employee) => {
+      const quantity = quantities[employee.id];
+      if (quantity === null || quantity === undefined) return [];
+      return [{ employeeId: employee.id, quantity }];
     }));
-  };
-
-  const handleSaveCurrentGroup = async () => {
-    if (!editable) {
-      message.warning('该日期的数据已锁定，仅管理员可修改');
+    if (!records.length) {
+      message.warning('请至少填写一名员工的产量');
       return;
     }
-
-    if (!currentGroupId || !currentGroup) {
-      message.error('请先选择小组');
-      return;
-    }
-
     setSaving(true);
     try {
-      const payload = {
+      const text = await groupEntryApi.save({
         token,
         date: date.format('YYYY-MM-DD'),
-        groupId: currentGroupId,
-        records: currentGroup.employees.map((emp) => ({
-          employeeId: emp.id,
-          quantity: Number(formValues[emp.id]?.quantity ?? 0),
-          remark: String(formValues[emp.id]?.remark ?? ''),
-        })),
-      };
-
-      // 初版仅 Mock 保存：后续改为调用后端接口
-      // eslint-disable-next-line no-console
-      console.log('Mock save payload:', payload);
-
-      message.success('已模拟保存当前小组');
+        records,
+      });
+      message.success(text || '产量已保存');
+    } catch (err) {
+      message.error(readErrorMessage(err, '保存失败'));
     } finally {
       setSaving(false);
     }
   };
 
-  const columns = [
-    {
-      title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
-      width: 120,
-    },
-    {
-      title: '工号',
-      dataIndex: 'employeeId',
-      key: 'employeeId',
-      width: 120,
-      render: (v: string | undefined) => v || '-',
-    },
-    {
-      title: '今日产量',
-      key: 'quantity',
-      width: 140,
-      render: (_: any, record: Employee) => (
-        <InputNumber
-          style={{ width: '100%' }}
-          min={0}
-          precision={0}
-          value={formValues[record.id]?.quantity ?? null}
-          disabled={!editable}
-          onChange={(v) => handleQuantityChange(record.id, v)}
-          placeholder="输入数量"
-        />
-      ),
-    },
-    {
-      title: '备注',
-      key: 'remark',
-      render: (_: any, record: Employee) => (
-        <Input
-          value={formValues[record.id]?.remark ?? ''}
-          disabled={!editable}
-          onChange={(e) => handleRemarkChange(record.id, e.target.value)}
-          placeholder="可选"
-        />
-      ),
-    },
-  ];
-
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>{factory?.name ? `${factory.name} - 组长产能填报` : '组长产能填报'}</h1>
-        <Space wrap size={10} style={{ alignItems: 'center' }}>
-          <div style={{ fontSize: 12, color: '#666' }}>日期</div>
+    <div style={{ minHeight: '100vh', background: '#f5f5f5', padding: '16px 16px calc(88px + env(safe-area-inset-bottom))' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 22, margin: '8px 0' }}>{view?.factoryName || '小组产量'}</h1>
+        <p style={{ color: '#666', marginTop: 0 }}>填写今天每人的完成数量。请使用员工本人，不要填工号。</p>
+        {!token && <Alert title="链接里没有入口令牌，请向管理员要新的群链接" type="error" showIcon />}
+        {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 12 }} />}
+        <div style={{ marginBottom: 12 }}>
           <DatePicker
             value={date}
-            onChange={(v) => {
-              if (v) setDate(v);
-            }}
             allowClear={false}
+            inputReadOnly
+            style={{ width: '100%' }}
+            size="large"
+            onChange={(value) => {
+              if (!value) return;
+              setDate(value);
+              load(value);
+            }}
           />
-          <div style={{ fontSize: 12, color: '#666' }}>小组</div>
-          <Select
-            style={{ width: 160 }}
-            value={currentGroupId}
-            onChange={setCurrentGroupId}
-            options={groups.map((g) => ({ label: g.name, value: g.id }))}
-            placeholder="选择小组"
-          />
-        </Space>
-      </div>
-
-      <Alert
-        type={editable ? 'info' : 'warning'}
-        showIcon
-        message={
-          editable
-            ? '说明：当日数据可由组长编辑，次日 00:00 后将自动锁定，仅管理员可修改。'
-            : '该日期的数据已锁定，仅管理员可修改。'
-        }
-        style={{ marginBottom: 16 }}
-      />
-
-      {!token && (
-        <Alert
-          type="warning"
-          showIcon
-          message="当前链接缺少 token 参数，Mock 模式下仍可查看页面；对接后端后请使用带 token 的群入口链接。"
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      <Card title={currentGroup ? `${currentGroup.name} - 员工列表` : '员工列表'}>
-        <Spin spinning={loading || saving}>
-          <Table
-            size="middle"
-            rowKey="id"
-            dataSource={currentGroup?.employees || []}
-            columns={columns as any}
-            pagination={false}
-          />
-
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button type="primary" onClick={handleSaveCurrentGroup} disabled={!editable} loading={saving}>
-              保存当前小组
-            </Button>
-          </div>
+        </div>
+        <Spin spinning={loading}>
+          {view && employeeCount === 0 && <Alert title="这一天没有可填报的员工" type="info" showIcon />}
+          {view?.groups.map((group) => (
+            <section key={group.id} style={{ background: '#fff', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+              <h2 style={{ fontSize: 16, margin: '4px 0 12px' }}>{group.name}</h2>
+              {group.employees.map((employee) => (
+                <label key={employee.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: '1px solid #f0f0f0' }}>
+                  <span>
+                    <strong style={{ fontSize: 16 }}>{employee.name}</strong>
+                    {employee.employeeNo && <span style={{ display: 'block', color: '#999', fontSize: 12 }}>{employee.employeeNo}</span>}
+                  </span>
+                  <InputNumber
+                    min={0}
+                    inputMode="numeric"
+                    size="large"
+                    disabled={view.editable === false}
+                    value={quantities[employee.id]}
+                    style={{ width: 120, fontSize: 16 }}
+                    onChange={(value) => setQuantities((current) => ({ ...current, [employee.id]: typeof value === 'number' ? value : null }))}
+                  />
+                </label>
+              ))}
+            </section>
+          ))}
         </Spin>
-      </Card>
+      </div>
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + env(safe-area-inset-bottom))', background: '#fff', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <Button type="primary" block size="large" loading={saving} disabled={!token || !view?.editable} onClick={save}>
+            保存今日产量
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
 
 export default GroupCapacityEntry;
-

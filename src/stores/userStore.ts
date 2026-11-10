@@ -1,24 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '../services/auth';
+import { canonicalRole, toUserRole, type UserRole } from '../domain/roles';
 
-export type UserRole = 'admin' | 'super_admin' | 'user' | 'manager';
-
-// 后端角色是大写（例如 SUPER_ADMIN），权限判断使用小写。比较前统一转成小写。
-const canonicalRole = (role: string | null | undefined): string =>
-  (role ?? '').trim().toLowerCase();
+export type { UserRole };
 
 interface UserState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   role: UserRole | null;
-  permissions: string[];
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   clearAuth: () => void;
   updateFactoryId: (factoryId: string) => void;
-  hasPermission: (permission: string) => boolean;
   hasRole: (role: UserRole) => boolean;
 }
 
@@ -29,50 +24,32 @@ export const useUserStore = create<UserState>()(
       token: null,
       isAuthenticated: false,
       role: null,
-      permissions: [],
 
-      setUser: (user) =>
-        set((state) => {
-          console.log('setUser 调用:', user);
-          // 同步保存到 localStorage
-          localStorage.setItem('user', JSON.stringify(user));
-          const rawRole = (user as { role?: string | null }).role;
-          const role = (rawRole && rawRole.trim() ? canonicalRole(rawRole) : 'user') as UserRole;
-          const permissions = (user as any).permissions || [];
-          return {
-            user,
-            token: state.token, // 保留token
-            isAuthenticated: true,
-            role,
-            permissions,
-          };
-        }),
+      setUser: (user) => {
+        localStorage.setItem('user', JSON.stringify(user));
+        set((state) => ({
+          user,
+          token: state.token,
+          isAuthenticated: true,
+          role: toUserRole(user.role),
+        }));
+      },
 
-      setToken: (token) =>
-        set((state) => {
-          console.log('setToken 调用:', token.substring(0, 20) + '...');
-          // 同步保存到 localStorage
-          localStorage.setItem('token', token);
-          return {
-            token,
-            user: state.user, // 保留user
-            isAuthenticated: true, // 同时设置认证状态
-            role: state.role,
-            permissions: state.permissions,
-          };
-        }),
+      setToken: (token) => {
+        const clean = token.startsWith('Bearer ') ? token.slice(7) : token;
+        localStorage.setItem('token', clean);
+        set((state) => ({
+          token: clean,
+          user: state.user,
+          isAuthenticated: true,
+          role: state.role,
+        }));
+      },
 
       clearAuth: () => {
-        console.log('clearAuth 调用');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        return set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          role: null,
-          permissions: [],
-        });
+        set({ user: null, token: null, isAuthenticated: false, role: null });
       },
 
       updateFactoryId: (factoryId) =>
@@ -80,16 +57,7 @@ export const useUserStore = create<UserState>()(
           user: state.user ? { ...state.user, factoryId } : null,
         })),
 
-      hasPermission: (permission: string) => {
-        const { permissions, role } = get();
-        if (canonicalRole(role) === 'super_admin') return true;
-        return permissions.includes(permission);
-      },
-
-      hasRole: (role: UserRole) => {
-        const { role: userRole } = get();
-        return canonicalRole(userRole) === canonicalRole(role);
-      },
+      hasRole: (role) => canonicalRole(get().role) === canonicalRole(role),
     }),
     {
       name: 'user-storage',
@@ -98,8 +66,7 @@ export const useUserStore = create<UserState>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
         role: state.role,
-        permissions: state.permissions,
       }),
-    }
-  )
+    },
+  ),
 );
