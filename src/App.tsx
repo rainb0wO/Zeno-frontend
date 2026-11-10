@@ -16,6 +16,10 @@ import Capacity from './pages/capacity/Capacity';
 import CapacityDetail from './pages/capacity/CapacityDetail';
 import GroupCapacityEntry from './pages/capacity/GroupCapacityEntry';
 import Salary from './pages/salary/Salary';
+import WeChatCallback from './pages/WeChatCallback';
+import WeChatBind from './pages/WeChatBind';
+import JoinFactory from './pages/JoinFactory';
+import PersonalSettings from './pages/PersonalSettings';
 
 function App() {
   return (
@@ -25,6 +29,9 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/join" element={<JoinFactory />} />
+            <Route path="/auth/wechat/callback" element={<WeChatCallback />} />
+            <Route path="/auth/wechat/bind" element={<WeChatBind />} />
             <Route path="/h5/group-capacity-entry" element={<GroupCapacityEntry />} />
             <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
@@ -37,6 +44,7 @@ function App() {
               <Route path="capacity" element={<Capacity />} />
               <Route path="capacity/:id" element={<CapacityDetail />} />
               <Route path="salary" element={<Salary />} />
+              <Route path="personal-settings" element={<PersonalSettings />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

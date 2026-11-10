@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import WeChatLoginEntry from '../components/WeChatLoginEntry';
 import { readErrorMessage } from '../domain/apiEnvelope';
 import { authApi } from '../services/auth';
-import { loadWeChatLoginOption, startWeChatLogin } from '../services/wechatAuth';
+import { prepareWeChatLogin, redirectToWeChat } from '../services/wechatAuth';
 import { useUserStore } from '../stores/userStore';
 
 interface LoginForm {
@@ -18,16 +18,16 @@ const Login = () => {
   const { setUser, setToken } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [wechatEnabled, setWechatEnabled] = useState(false);
+  const [wechatUrl, setWechatUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    loadWeChatLoginOption()
+    prepareWeChatLogin()
       .then((option) => {
-        if (alive) setWechatEnabled(option.enabled);
+        if (alive) setWechatUrl(option.enabled ? option.url : null);
       })
       .catch(() => {
-        if (alive) setWechatEnabled(false);
+        if (alive) setWechatUrl(null);
       });
     return () => {
       alive = false;
@@ -78,7 +78,7 @@ const Login = () => {
             登录
           </Button>
         </Form>
-        <WeChatLoginEntry enabled={wechatEnabled} onLogin={startWeChatLogin} />
+        <WeChatLoginEntry enabled={Boolean(wechatUrl)} onLogin={() => { if (wechatUrl) redirectToWeChat(wechatUrl); }} />
         <div style={{ marginTop: 16, textAlign: 'center' }}>
           还没有厂区？ <Button type="link" onClick={() => navigate('/register')}>注册并创建厂区</Button>
         </div>

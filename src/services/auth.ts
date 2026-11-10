@@ -28,7 +28,7 @@ export interface RegisterParams {
   phone?: string;
 }
 
-function readSession(data: unknown): AuthSession {
+export function readSession(data: unknown): AuthSession {
   const body = (data && typeof data === 'object' ? data : {}) as { token?: unknown; user?: User };
   if (typeof body.token !== 'string' || !body.user) {
     throw new Error('登录响应缺少 token 或用户信息');

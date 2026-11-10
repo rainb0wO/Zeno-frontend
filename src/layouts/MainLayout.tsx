@@ -130,8 +130,14 @@ const MainLayout = () => {
           <Space className="header-right">
             <Dropdown
               menu={{
-                items: [{ key: 'logout', label: '退出登录', icon: <LogoutOutlined />, danger: true }],
-                onClick: ({ key }) => { if (key === 'logout') logout(); },
+                items: [
+                  { key: 'settings', label: '个人设置', icon: <UserOutlined /> },
+                  { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, danger: true },
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'logout') logout();
+                  if (key === 'settings') navigate('/personal-settings');
+                },
               }}
             >
               <Button type="primary" icon={<UserOutlined />}>

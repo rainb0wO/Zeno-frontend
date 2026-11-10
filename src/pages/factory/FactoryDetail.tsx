@@ -5,6 +5,7 @@ import { readErrorMessage } from '../../domain/apiEnvelope';
 import { buildGroupEntryLink } from '../../domain/groupEntry';
 import { useAccess } from '../../hooks/useAccess';
 import { factoryApi, type Factory } from '../../services/factory';
+import { createFactoryInvite } from '../../services/wechatAuth';
 
 const FactoryDetail = () => {
   const { id } = useParams();
@@ -12,6 +13,7 @@ const FactoryDetail = () => {
   const { isAdmin } = useAccess();
   const [factory, setFactory] = useState<Factory | null>(null);
   const [link, setLink] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [queryId, setQueryId] = useState(id);
@@ -32,6 +34,21 @@ const FactoryDetail = () => {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [id]);
+
+  const invite = async () => {
+    if (!id) return;
+    try {
+      const result = await createFactoryInvite(id, window.location.origin);
+      if (!result.token && !result.url) {
+        message.error('后端没有返回邀请链接');
+        return;
+      }
+      setInviteLink(result.url);
+      message.success(result.message || '邀请链接已生成');
+    } catch (err) {
+      message.error(readErrorMessage(err, '生成邀请失败'));
+    }
+  };
 
   const rotate = async () => {
     if (!id) return;
@@ -71,6 +88,11 @@ const FactoryDetail = () => {
               {link && (
                 <Input.TextArea style={{ marginTop: 12 }} value={link} readOnly autoSize />
               )}
+            </Card>
+            <Card title="成员管理">
+              <p>生成邀请链接。对方用微信打开后，可以用邀请加入本厂，或绑定自己已有的账号。</p>
+              {isAdmin ? <Button onClick={invite}>生成邀请链接</Button> : <Alert title="只有厂区管理员可以邀请成员" type="info" showIcon />}
+              {inviteLink && <Input.TextArea style={{ marginTop: 12 }} value={inviteLink} readOnly autoSize />}
             </Card>
           </Space>
         )}
