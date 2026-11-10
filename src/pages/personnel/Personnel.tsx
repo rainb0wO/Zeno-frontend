@@ -1,494 +1,135 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, Space, Modal, Form, Input, message, Spin, Select, Tag, Alert } from 'antd';
-import BizAction from '../../components/BizAction';
-import { useReadonly } from '../../contexts/ReadonlyContext';
-import BatchImportModal from '../../components/BatchImportModal';
-import ResponsiveDataList from '../../components/ResponsiveDataList';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
-import personnelApi from '../../services/personnel';
-import { useUserStore } from '../../stores/userStore';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Button, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, message } from 'antd';
+import { readErrorMessage } from '../../domain/apiEnvelope';
+import { useAccess } from '../../hooks/useAccess';
+import { departmentApi, type Department } from '../../services/department';
+import { personnelApi, type Employee, type EmployeeInput } from '../../services/personnel';
+import { useFactoryStore } from '../../stores/factoryStore';
 
+function flatten(nodes: Department[]): Department[] {
+  return nodes.flatMap((node) => [node, ...(node.children ? flatten(node.children) : [])]);
+}
 
-const Personnel = () => {
-  const { isReadonly } = useReadonly();
-  const { user } = useUserStore();
-  const navigate = useNavigate();
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<any>(null);
-  const [form] = Form.useForm();
+const PersonnelPage = () => {
+  const factory = useFactoryStore((state) => state.currentFactory);
+  const { canWriteEmployee, canDeleteEmployee } = useAccess();
+  const [form] = Form.useForm<EmployeeInput>();
+  const [rows, setRows] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Employee | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const [loading, setLoading] = useState<boolean>(false);
-  // 部门筛选
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('全部');
-  // 搜索关键词
-  const [searchText, setSearchText] = useState<string>('');
-  // 新增：部门列表
-  const [departments, setDepartments] = useState<any[]>([]);
-  
-  // 开发环境全局调试
-  if (import.meta.env.DEV) {
-    (window as any).__EMP_LIST__ = employees;
-  }
-  
-  // 从后端获取部门列表
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        const response = await personnelApi.getDepartments();
-        setDepartments(response.departments || []);
-      } catch (error: any) {
-        console.error('获取部门列表失败:', error);
-        // 仅在开发环境使用默认部门数据
-        if (import.meta.env.DEV) {
-          setDepartments([
-            { id: '1', name: '生产部', factoryId: '1', createdAt: '', updatedAt: '' },
-            { id: '2', name: '质检部', factoryId: '1', createdAt: '', updatedAt: '' },
-            { id: '3', name: '物流部', factoryId: '1', createdAt: '', updatedAt: '' },
-          ]);
-        }
-      }
-    };
-    
-    fetchDepartments();
-  }, []);
-  
-  // 从后端获取员工数据
-  const fetchEmployees = async () => {
+  const factoryId = factory?.id;
+  const load = useCallback(async () => {
+    if (!factoryId) return;
     setLoading(true);
+    setError('');
     try {
-      // 假设当前用户只有一个工厂，所以没有传递factoryId
-      const response = await personnelApi.getEmployees();
-      setEmployees(response.employees || response || []);
-      return true; // 成功标记
-    } catch (error: any) {
-      console.error('获取员工列表失败:', error);
-      
-      if (error.response?.status === 401) {
-        message.error('登录已过期，请重新登录');
-        navigate('/login');
-      } else {
-        message.error('获取员工列表失败');
-        
-        // 仅在开发环境保留Mock数据，且确保先await接口失败再注入
-        if (import.meta.env.DEV) {
-          const mockData = [
-            { 
-              id: '1', 
-              employeeId: 'EMP001', 
-              name: '张三', 
-              departmentId: '1',
-              position: '缝纫工', 
-              hireDate: '2023-05-15', 
-              salaryType: 'PIECE', 
-              pieceRate: 0.5, 
-              phone: '13800138001', 
-              status: 'active' 
-            },
-            { 
-              id: '2', 
-              employeeId: 'EMP002', 
-              name: '李四', 
-              departmentId: '1',
-              position: '裁剪工', 
-              hireDate: '2024-03-20', 
-              salaryType: 'PIECE', 
-              pieceRate: 0.8, 
-              phone: '13800138002', 
-              status: 'active' 
-            },
-            { 
-              id: '3', 
-              employeeId: 'EMP003', 
-              name: '王五', 
-              departmentId: '2',
-              position: '质检员', 
-              hireDate: '2022-10-08', 
-              salaryType: 'TIME', 
-              baseSalary: 6000, 
-              phone: '13800138003', 
-              status: 'active' 
-            },
-            { 
-              id: '4', 
-              employeeId: 'EMP004', 
-              name: '赵六', 
-              departmentId: '3',
-              position: '仓库管理员', 
-              hireDate: '2025-01-12', 
-              salaryType: 'FIXED', 
-              baseSalary: 5500, 
-              phone: '13800138004', 
-              status: 'probation' 
-            },
-          ];
-          setEmployees(mockData);
-          return true; // Mock数据也算成功
-        }
-      }
-      return false; // 失败标记
+      const [employees, depts] = await Promise.all([
+        personnelApi.list(),
+        departmentApi.list(),
+      ]);
+      setRows(employees.employees);
+      setDepartments(flatten(depts));
+    } catch (err) {
+      setError(readErrorMessage(err, '员工列表加载失败'));
     } finally {
       setLoading(false);
     }
-  };
-  
+  }, [factoryId]);
+
   useEffect(() => {
-    fetchEmployees();
-  }, [user?.factoryId]);
-  
-  // 过滤员工数据 - 使用useMemo缓存，提高性能
-  const filteredEmployees = useMemo(() => {
-    let data = employees;
-    // 部门过滤
-    if (selectedDepartment !== '全部') {
-      data = data.filter(e => e.departmentId === selectedDepartment);
-    }
-    // 关键字搜索
-    if (searchText.trim()) {
-      const kw = searchText.trim().toLowerCase();
-      data = data.filter(e =>
-        String(e.employeeId).toLowerCase().includes(kw) ||
-        String(e.name).toLowerCase().includes(kw)
-      );
-    }
-    return data;
-  }, [employees, selectedDepartment, searchText]);
-  
-  // 封装API错误处理函数，提高代码可读性和可维护性
-  const showApiError = (error: any) => {
-    const code = error.response?.status;
-    const msgMap: Record<number, string> = {
-      400: '输入数据无效，请检查后重试',
-      403: '无权限执行此操作',
-      404: '员工不存在',
-    };
-    message.error(msgMap[code] || '操作失败，请稍后重试');
-  };
-  
-  // 处理编辑按钮
-  const handleEdit = (record: any) => {
-    // 现在仅支持编辑姓名和联系电话，与列表展示字段保持一致
-    const simpleRecord = {
-      id: record.id,
-      name: record.name,
-      phone: record.phone,
-    };
+    void load();
+  }, [load]);
 
-    setEditingEmployee(simpleRecord);
-    form.setFieldsValue(simpleRecord);
-    setIsModalVisible(true);
-  };
-  
-  // 处理删除按钮
-  const handleDelete = (record: any) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除员工 "${record.name}" 吗？删除后数据不可恢复。`,
-      okText: '确定',
-      cancelText: '取消',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          // 调用后端删除 API
-          await personnelApi.deleteEmployee(record.id);
-          
-          setEmployees(prev => prev.filter(emp => emp.id !== record.id));
-          message.success('员工删除成功');
-        } catch (error: any) {
-          console.error('删除员工失败:', error);
-          showApiError(error);
-        }
-      }
-    });
-  };
-  
-  // 处理表单提交
-  const handleSubmit = async () => {
+  const submit = async () => {
+    if (!factory?.id) return;
+    const values = await form.validateFields();
+    setSaving(true);
     try {
-      // 只校验并获取姓名和联系电话，与「员工列表」展示字段对齐
-      const values = await form.validateFields();
-
-      const submitValues: any = {
-        name: values.name,
-        // 联系电话为非必填，只有在有值时才提交
-        ...(values.phone ? { phone: values.phone } : {}),
-      };
-      
-      if (editingEmployee) {
-        await personnelApi.updateEmployee(editingEmployee.id, submitValues);
-
-        // 统一以重新拉取列表为准，保证与后端一致
-        const ok = await fetchEmployees();
-        if (ok) {
-          message.success('员工信息更新成功');
-        }
+      if (editing) {
+        message.success(await personnelApi.update(editing.id, values));
       } else {
-        await personnelApi.createEmployee(submitValues);
-
-        // 统一以重新拉取列表为准，保证与后端一致
-        const ok = await fetchEmployees();
-        if (ok) {
-          message.success('员工创建成功，请在部门管理中进行分配');
-        }
+        const created = await personnelApi.create(values);
+        message.success(created.message);
       }
-      
-      setIsModalVisible(false);
-      form.resetFields();
-      setEditingEmployee(null);
-    } catch (error: any) {
-      console.error('保存员工失败:', error);
-      showApiError(error);
-    }
-  };
-  
-  // 处理取消
-  const handleCancel = () => {
-    setIsModalVisible(false);
-    form.resetFields();
-    setEditingEmployee(null);
-  };
-  
-  // 打开批量导入弹窗
-  const [importOpen, setImportOpen] = useState(false);
-
-  const handleBatchImportSuccess = () => {
-    fetchEmployees();
-  };
-
-  // 处理新增按钮
-  const handleAdd = () => {
-    setEditingEmployee(null);
-    form.resetFields();
-    setIsModalVisible(true);
-  };
-
-  // 扁平化部门树用于反查
-  const deptMap = useMemo(() => {
-    const map = new Map<string, any>();
-    const flatten = (list: any[]) => {
-      list.forEach((item) => {
-        map.set(item.id, item);
-        if (item.children) flatten(item.children);
-      });
-    };
-    flatten(departments);
-    return map;
-  }, [departments]);
-
-  // 根据部门ID反查 部门-组-岗位 路径
-  const getDeptPath = (deptId: string) => {
-    if (!deptId || !deptMap.has(deptId)) return { dept: null, group: null, post: null };
-    
-    const node3 = deptMap.get(deptId); // 可能是岗位、组或部门
-    const node2 = node3?.parentId ? deptMap.get(node3.parentId) : null;
-    const node1 = node2?.parentId ? deptMap.get(node2.parentId) : null;
-
-    // 根据深度判断（depth属性已在DepartmentTree中计算，但在API返回的原始list中没有，我们根据parentId回溯）
-    // 岗位(333) -> 组(2222) -> 部门(aaa)
-    if (node1) {
-      return { dept: node1.name, group: node2?.name, post: node3.name };
-    } else if (node2) {
-      return { dept: node2.name, group: node3.name, post: null };
-    } else {
-      return { dept: node3.name, group: null, post: null };
+      setOpen(false);
+      await load();
+    } catch (err) {
+      message.error(readErrorMessage(err));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const columns = [
-    { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId' },
-    {
-      title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string) => (
-        <Space>
-          <UserOutlined />
-          {name}
-        </Space>
-      ),
-    },
-    { title: '联系电话', dataIndex: 'phone', key: 'phone' },
-    {
-      title: '部门',
-      dataIndex: 'departmentId',
-      key: 'dept',
-      render: (deptId: string) => {
-        const { dept } = getDeptPath(deptId);
-        return dept || <Tag color="default">未分配</Tag>;
-      },
-    },
-    {
-      title: '组',
-      dataIndex: 'departmentId',
-      key: 'group',
-      render: (deptId: string) => {
-        const { group } = getDeptPath(deptId);
-        return group || '-';
-      },
-    },
-    {
-      title: '岗位',
-      dataIndex: 'departmentId',
-      key: 'post',
-      render: (deptId: string) => {
-        const { post } = getDeptPath(deptId);
-        // 如果只有一层，则岗位显示为'-'或部门名，按需调整
-        return post || '-';
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: any) => (
-        <Space size="middle">
-          <BizAction
-            type="primary"
-            icon={<EditOutlined />}
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(record);
-            }}
-          >
-            编辑
-          </BizAction>
-          <BizAction
-            danger
-            icon={<DeleteOutlined />}
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete(record);
-            }}
-          >
-            删除
-          </BizAction>
-        </Space>
-      ),
-    },
-  ];
-
-  // 计算未分配员工数量
-  const unassignedCount = useMemo(() => {
-    return employees.filter(emp => !emp.departmentId).length;
-  }, [employees]);
+  if (!factory) return <div className="page-container"><Empty description="请先在顶栏选择厂区" /></div>;
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <h1>人员管理</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Input
-            placeholder="输入员工ID/姓名搜索"
-            allowClear
-            style={{ width: 220 }}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-          <Select
-            placeholder="选择部门"
-            style={{ width: 150 }}
-            value={selectedDepartment}
-            onChange={setSelectedDepartment}
-            allowClear={false}
-          >
-            <Select.Option key="全部" value="全部">全部</Select.Option>
-            {departments.map(dep => (
-              <Select.Option key={dep.id} value={dep.id}>{dep.name}</Select.Option>
-            ))}
-          </Select>
-          <BizAction 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
-          >
-            新增员工
-          </BizAction>
-          <BizAction
-            onClick={() => setImportOpen(true)}
-          >
-            批量导入
-          </BizAction>
-        </div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <h1>员工</h1>
+        {canWriteEmployee && <Button type="primary" onClick={() => { setEditing(null); form.resetFields(); setOpen(true); }}>新建员工</Button>}
       </div>
-
-      {unassignedCount > 0 && (
-        <Alert
-          message={`共有 ${unassignedCount} 名员工未分配部门，请在"部门管理"中进行分配`}
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      
-      {/* 移除variant="outlined"属性，兼容Ant Design v4 */}
-      <Card title="员工列表">
-        <Spin spinning={loading}>
-          <ResponsiveDataList
-            columns={columns}
-            dataSource={filteredEmployees}
-            rowKey="id"
-            pagination={{ pageSize: 10 }}
-            onRowClick={(record) => {
-              if (isReadonly) {
-                navigate(`/personnel/${record.id}`);
-              }
-            }}
-            mobileRenderItem={(record) => (
-              <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <Space size={6}>
-                    <UserOutlined />
-                    <div style={{ fontWeight: 600 }}>{record.name}</div>
-                  </Space>
-                  {record.departmentName ? (
-                    <Tag color="blue">{record.departmentName}</Tag>
-                  ) : (
-                    <Tag color="default">未分配</Tag>
-                  )}
-                </Space>
-                <div style={{ fontSize: 12, color: '#666' }}>员工ID：{record.employeeId || '-'}</div>
-                <div style={{ fontSize: 12, color: '#666' }}>电话：{record.phone || '-'}</div>
+      {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <Table
+        rowKey="id"
+        loading={loading}
+        dataSource={rows}
+        locale={{ emptyText: '还没有员工' }}
+        scroll={{ x: 720 }}
+        columns={[
+          { title: '姓名', dataIndex: 'name' },
+          { title: '工号', dataIndex: 'employeeId', render: (value) => value || '-' },
+          { title: '部门', render: (_, row) => departments.find((item) => item.id === row.departmentId)?.name || '-' },
+          { title: '岗位', dataIndex: 'position', render: (value) => value || '-' },
+          { title: '薪资类型', dataIndex: 'salaryType', render: (value) => value || '-' },
+          {
+            title: '操作',
+            render: (_, row) => (canWriteEmployee || canDeleteEmployee) && (
+              <Space>
+                {canWriteEmployee && <Button size="small" onClick={() => {
+                  setEditing(row);
+                  form.setFieldsValue({
+                    name: row.name,
+                    position: row.position || undefined,
+                    departmentId: row.departmentId,
+                    salaryType: row.salaryType || 'PIECE',
+                    pieceRate: row.pieceRate ?? undefined,
+                    status: row.status || 'active',
+                  });
+                  setOpen(true);
+                }}>编辑</Button>}
+                {canDeleteEmployee && <Button size="small" danger onClick={() => Modal.confirm({
+                  title: `删除员工「${row.name}」？`,
+                  okText: '删除',
+                  okType: 'danger',
+                  cancelText: '取消',
+                  onOk: async () => {
+                    message.success(await personnelApi.remove(row.id));
+                    await load();
+                  },
+                })}>删除</Button>}
               </Space>
-            )}
-          />
-        </Spin>
-      </Card>
-      
-      <BatchImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onSuccess={handleBatchImportSuccess}
+            ),
+          },
+        ]}
       />
-
-      <Modal
-        title={editingEmployee ? '编辑员工' : '新增员工'}
-        open={isModalVisible}
-        onOk={handleSubmit}
-        onCancel={handleCancel}
-        width={600}
-        okText="确定"
-        cancelText="取消"
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{}}
-        >
-          <Form.Item
-            name="name"
-            label="姓名"
-            rules={[{ required: true, message: '请输入姓名' }]}
-          >
-            <Input placeholder="请输入员工姓名" />
+      <Modal title={editing ? '编辑员工' : '新建员工'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={saving} okText="保存" cancelText="取消">
+        <Form form={form} layout="vertical">
+          <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}><Input /></Form.Item>
+          <Form.Item name="position" label="岗位"><Input /></Form.Item>
+          <Form.Item name="departmentId" label="部门">
+            <Select allowClear placeholder="可不选" options={departments.map((item) => ({ value: item.id, label: item.name }))} />
           </Form.Item>
-
-          <Form.Item
-            name="phone"
-            label="联系电话"
-          >
-            <Input placeholder="请输入联系电话" />
+          <Form.Item name="salaryType" label="薪资类型" initialValue="PIECE">
+            <Select options={[{ value: 'PIECE', label: '计件' }, { value: 'TIME', label: '计时' }, { value: 'FIXED', label: '固定' }]} />
+          </Form.Item>
+          <Form.Item name="pieceRate" label="计件单价"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="status" label="状态" initialValue="active">
+            <Select options={[{ value: 'active', label: '在职' }, { value: 'inactive', label: '停用' }]} />
           </Form.Item>
         </Form>
       </Modal>
@@ -496,4 +137,4 @@ const Personnel = () => {
   );
 };
 
-export default Personnel;
+export default PersonnelPage;

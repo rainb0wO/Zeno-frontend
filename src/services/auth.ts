@@ -1,79 +1,99 @@
-import { get, post } from './request';
+import { apiGet, apiPost } from './http';
+import { endpoints } from './endpoints';
+import type { UserRole } from '../domain/roles';
 
-// 用户信息类型
 export interface User {
   id: string;
   username: string;
-  email: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'USER';
-  factoryId?: string;
-  createdAt: string;
+  role: UserRole | string;
+  factoryId?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  createdAt?: string;
 }
 
-// 登录参数
-export interface LoginParams {
-  account: string;
-  password: string;
-}
-
-// 注册参数
-export interface RegisterParams {
-  username: string;
-  companyName: string; // 企业名称（必填）
-  phone?: string;      // 手机号（选填）
-  email?: string;      // 邮箱（选填）
-  password: string;
-  confirmPassword: string;
-}
-
-// 登录响应
-export interface LoginResponse {
-  message: string;
+export interface AuthSession {
   token: string;
   user: User;
 }
 
-// 注册响应
-export interface RegisterResponse {
-  message: string;
-  user: User;
-  token: string; // 注册成功后返回token以便自动登录
+export interface LoginParams {
+  account: string;
+  password: string;
+  deviceId?: string;
+  deviceType?: 'WEB';
 }
 
-// 认证API
+export interface RegisterParams {
+  username: string;
+  password: string;
+  confirmPassword: string;
+  factoryName: string;
+  phone?: string;
+  address?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  managementMode?: string;
+}
+
+export function readSession(body: { token?: unknown; user?: User }): AuthSession {
+  if (typeof body.token !== 'string' || !body.user) {
+    throw new Error('登录响应缺少 token 或 user');
+  }
+  const token = body.token.startsWith('Bearer ') ? body.token.slice(7) : body.token;
+  return { token, user: body.user };
+}
+
+const DEVICE_KEY = 'zeno_device_id';
+
+export function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_KEY);
+  if (!id) {
+    id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(DEVICE_KEY, id);
+  }
+  return id;
+}
+
 export const authApi = {
-  // 获取验证码（返回完整URL）
-  getCaptcha: (): string => {
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
-    return `${BASE_URL}/auth/captcha?t=${Date.now()}`;
+  login: async (params: LoginParams) => {
+    const result = await apiPost<{ token: string; user: User }>(endpoints.login, {
+      account: params.account,
+      password: params.password,
+      deviceId: params.deviceId ?? getDeviceId(),
+      deviceType: params.deviceType ?? 'WEB',
+    }, { skipErrorToast: true });
+    return { message: result.message, ...readSession(result) };
   },
 
-  // 用户登录
-  login: (params: LoginParams): Promise<LoginResponse> => {
-    return post<LoginResponse>('/auth/login', params);
+  register: async (params: RegisterParams) => {
+    const result = await apiPost<{ token: string; user: User }>(endpoints.register, params, { skipErrorToast: true });
+    return { message: result.message, ...readSession(result) };
   },
 
-  // 用户注册
-  register: (params: RegisterParams): Promise<RegisterResponse> => {
-    return post<RegisterResponse>('/auth/register', params);
+  me: async () => {
+    const result = await apiGet<{ user: User }>(endpoints.me);
+    if (!result.user) throw new Error('响应缺少 user');
+    return result.user;
   },
 
-  // 获取当前用户信息
-  getCurrentUser: (): Promise<{ user: User }> => {
-    return get<{ user: User }>('/auth/me');
+  switchFactory: async (factoryId: string) => {
+    const result = await apiPost<{ user: User }>(endpoints.switchFactory, { factoryId });
+    if (!result.user?.factoryId) throw new Error('响应缺少 user.factoryId');
+    return { message: result.message, user: result.user, factoryId: result.user.factoryId };
   },
 
-  // 切换当前厂区
-  switchFactory: (factoryId: string): Promise<{ user: User; message: string }> => {
-    return post<{ user: User; message: string }>('/auth/switch-factory', { factoryId });
-  },
-
-  // 退出登录
-  logout: (): void => {
+  logout: async () => {
+    try {
+      await apiPost<{ tokenRevoked: boolean }>(endpoints.logout, { deviceId: getDeviceId() }, {
+        skipErrorToast: true,
+        skipAuthRedirect: true,
+      });
+    } catch {
+      // 接口失败也要清掉本地登录态。
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login';
   },
 };
-
-export default authApi;

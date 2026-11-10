@@ -1,378 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Card, Switch, Space, Modal, Form, Input, App, Select, Button, Grid } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { useReadonly } from '../../contexts/ReadonlyContext';
-import DepartmentMobile from './DepartmentMobile';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import DepartmentTree from '../../components/DepartmentTree';
-import EmployeePool from '../../components/EmployeePool';
-import type { Department as DepartmentRecord } from '../../services/department';
-import { departmentApi } from '../../services/department';
-import { useDepartmentStore } from '../../stores/departmentStore';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Empty, Form, Input, Modal, Select, Space, Table, message } from 'antd';
+import { readErrorMessage } from '../../domain/apiEnvelope';
+import { useAccess } from '../../hooks/useAccess';
+import { departmentApi, type Department } from '../../services/department';
 import { useFactoryStore } from '../../stores/factoryStore';
-import { useUserStore } from '../../stores/userStore';
 
-import personnelApi from '../../services/personnel';
+interface FlatDepartment extends Department {
+  depth: number;
+}
 
-const { Content, Sider } = Layout;
+function flatten(nodes: Department[], depth = 0): FlatDepartment[] {
+  const rows: FlatDepartment[] = [];
+  nodes.forEach((node) => {
+    rows.push({ ...node, depth });
+    if (node.children?.length) rows.push(...flatten(node.children, depth + 1));
+  });
+  return rows;
+}
 
-const Department: React.FC = () => {
-  const { user } = useUserStore();
-  const screens = Grid.useBreakpoint();
-  const { isReadonly, showTip } = useReadonly();
-  const { message } = App.useApp();
-  const [form] = Form.useForm();
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingDepartment, setEditingDepartment] = useState<DepartmentRecord | null>(null);
-  const [parentId, setParentId] = useState<string | null>(null);
+const DepartmentPage = () => {
+  const factory = useFactoryStore((state) => state.currentFactory);
+  const { canWriteDepartment } = useAccess();
+  const [form] = Form.useForm<{ name: string; parentId?: string }>();
+  const [rows, setRows] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Department | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const isMobileView = !screens.md;
+  const flat = useMemo(() => flatten(rows), [rows]);
+  const parentName = (id?: string | null) => flat.find((item) => item.id === id)?.name || '-';
 
-  const {
-    departments,
-    showDeleted,
-    setDepartments,
-    setShowDeleted,
-    setLoading,
-  } = useDepartmentStore();
-
-  const { currentFactory } = useFactoryStore();
-
-  // 加载部门树
-  const loadDepartments = async () => {
-    if (!currentFactory?.id) return;
-
+  const factoryId = factory?.id;
+  const load = useCallback(async () => {
+    if (!factoryId) {
+      setRows([]);
+      return;
+    }
     setLoading(true);
+    setError('');
     try {
-      const response: any = await departmentApi.getDepartments({
-        factoryId: currentFactory.id,
-        includeDeleted: showDeleted,
-      });
-
-      const list: DepartmentRecord[] =
-        response?.departments?.items ||
-        response?.departments ||
-        response?.department ||
-        [];
-
-      setDepartments(list);
-    } catch (error: any) {
-      console.error('加载部门列表失败:', error);
-      message.error('加载部门列表失败');
+      setRows(await departmentApi.list());
+    } catch (err) {
+      setError(readErrorMessage(err, '部门加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [factoryId]);
 
   useEffect(() => {
-    loadDepartments();
-  }, [currentFactory?.id, showDeleted]);
+    void load();
+  }, [load]);
 
-  // 新增根部门
-  const handleAddRoot = () => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    setEditingDepartment(null);
-    setParentId(null);
-    form.resetFields();
-    setIsModalVisible(true);
-  };
-
-  // 新增子部门
-  const handleAddChild = (parentId: string) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    setEditingDepartment(null);
-    setParentId(parentId);
-    form.resetFields();
-    setIsModalVisible(true);
-  };
-
-  // 编辑部门
-  const handleEdit = (department: DepartmentRecord) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    setEditingDepartment(department);
-    setParentId(null);
-    form.setFieldsValue({
-      name: department.name,
-      leaderId: department.leaderId,
-    });
-    setIsModalVisible(true);
-  };
-
-  // 删除部门
-  const handleDelete = (department: DepartmentRecord) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    Modal.confirm({
-      title: '删除部门',
-      content:
-        '删除后，该部门及其所有下级部门、员工、考勤和排班记录将被标记为"已删除"，在正常页面中不再显示，但仍可在历史报表查询。此操作可在30天内联系管理员恢复。确认继续？',
-      okText: '确认删除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          const response = await departmentApi.deleteDepartment(department.id);
-          message.success(`删除成功，影响 ${response.cascadeCount} 条记录`);
-          await loadDepartments();
-        } catch (error: any) {
-          console.error('删除部门失败:', error);
-          message.error(error.response?.data?.message || '删除部门失败');
-        }
-      },
-    });
-  };
-
-  // 恢复部门
-  const handleRestore = (department: DepartmentRecord) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    Modal.confirm({
-      title: '恢复部门',
-      content: `确认要恢复部门 "${department.name}" 及其所有下级数据吗？`,
-      okText: '确认恢复',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await departmentApi.restoreDepartment(department.id);
-          message.success('恢复成功');
-          await loadDepartments();
-        } catch (error: any) {
-          console.error('恢复部门失败:', error);
-          message.error(error.response?.data?.message || '恢复部门失败');
-        }
-      },
-    });
-  };
-
-  // 永久清除
-  const handleForceDelete = (department: DepartmentRecord) => {
-    if (isReadonly) {
-      showTip();
-      return;
-    }
-    Modal.confirm({
-      title: '永久清除部门',
-      content: '此操作将彻底删除该部门及全部下级数据且无法恢复。确认要永久清除？',
-      okText: '确认清除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await departmentApi.forceDeleteDepartment(department.id);
-          message.success('永久清除成功');
-          await loadDepartments();
-        } catch (error: any) {
-          console.error('永久清除失败:', error);
-          message.error(error.response?.data?.message || '永久清除失败');
-        }
-      },
-    });
-  };
-
-  // 提交表单
-  const handleSubmit = async () => {
+  const submit = async () => {
+    if (!factory?.id) return;
+    const values = await form.validateFields();
+    setSaving(true);
     try {
-      const values = await form.validateFields();
-      
-      if (!currentFactory?.id) {
-        message.error('请先选择厂区');
-        return;
-      }
-
-      if (editingDepartment) {
-        // 更新
-        await departmentApi.updateDepartment(editingDepartment.id, {
-          name: values.name,
-          leaderId: values.leaderId || null,
-        });
-        message.success('更新成功');
-      } else {
-        // 新增
-        await departmentApi.createDepartment({
-          name: values.name,
-          factoryId: currentFactory.id,
-          parentId: parentId || null,
-          leaderId: values.leaderId || null,
-        });
-        message.success('创建成功');
-      }
-
-      setIsModalVisible(false);
-      form.resetFields();
-      setEditingDepartment(null);
-      setParentId(null);
-      await loadDepartments();
-    } catch (error: any) {
-      console.error('保存部门失败:', error);
-      if (error.errorFields) {
-        // 表单验证错误
-        return;
-      }
-      message.error(error.response?.data?.message || '保存部门失败');
+      const text = editing
+        ? await departmentApi.update(editing.id, { name: values.name, parentId: values.parentId || null })
+        : await departmentApi.create({ name: values.name, parentId: values.parentId || null });
+      message.success(text);
+      setOpen(false);
+      await load();
+    } catch (err) {
+      message.error(readErrorMessage(err));
+    } finally {
+      setSaving(false);
     }
   };
 
-  // 拖拽分配员工
-  const handleDropEmployee = async (employeeIds: string[], departmentId: string) => {
-    try {
-      // 检查是否有员工已分配部门（跨部门调动）
-      const employeesResponse = await personnelApi.getEmployees();
-      const employees = employeesResponse.employees || [];
-      const hasAssigned = employeeIds.some(id => {
-        const emp = employees.find(e => e.id === id);
-        return emp && emp.departmentId && emp.departmentId !== departmentId;
-      });
-
-      if (hasAssigned) {
-        Modal.confirm({
-          title: '跨部门调动确认',
-          content: `员工已在其他部门，确认调至「${departments.find(d => d.id === departmentId)?.name || '该部门'}」吗？`,
-          okText: '确认调动',
-          cancelText: '取消',
-          onOk: async () => {
-            await doAssignEmployees(employeeIds, departmentId);
-          },
-        });
-      } else {
-        await doAssignEmployees(employeeIds, departmentId);
-      }
-    } catch (error: any) {
-      console.error('分配员工失败:', error);
-      message.error(error.response?.data?.message || '分配员工失败');
-    }
-  };
-
-  // 执行分配
-  const doAssignEmployees = async (employeeIds: string[], departmentId: string) => {
-    try {
-      const response = await departmentApi.assignEmployees(departmentId, {
-        employeeIds,
-      });
-      message.success(`已调配 ${response.updated} 名员工`);
-      await loadDepartments();
-    } catch (error: any) {
-      console.error('分配员工失败:', error);
-      message.error(error.response?.data?.message || '分配员工失败');
-    }
-  };
-
-  // 获取员工列表（用于选择负责人）
-  const [employees, setEmployees] = useState<any[]>([]);
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const response = await personnelApi.getEmployees();
-        setEmployees(response.employees || []);
-      } catch (error) {
-        console.error('获取员工列表失败:', error);
-      }
-    };
-    fetchEmployees();
-  }, [user?.factoryId]);
-
-  if (isMobileView) {
-    return <DepartmentMobile departments={departments} showDeleted={showDeleted} />;
+  if (!factory) {
+    return <div className="page-container"><Empty description="请先在顶栏选择厂区" /></div>;
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="page-container">
-        <div className="page-header" style={{ marginBottom: 16 }}>
-          <h1>部门管理</h1>
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAddRoot}
-            >
-              新增部门
-            </Button>
-            <span>显示已删除：</span>
-            <Switch checked={showDeleted} onChange={setShowDeleted} />
-          </Space>
-        </div>
-
-        <Layout style={{ height: 'calc(100vh - 120px)' }}>
-          <Sider width={400} style={{ backgroundColor: '#fff', padding: 16 }}>
-            <Card title="部门树" style={{ height: '100%' }}>
-              <DepartmentTree
-                departments={departments}
-                showDeleted={showDeleted}
-                onAddChild={handleAddChild}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onRestore={handleRestore}
-                onForceDelete={handleForceDelete}
-                onDropEmployee={handleDropEmployee}
-              />
-            </Card>
-          </Sider>
-
-          <Content style={{ marginLeft: 16, backgroundColor: '#fff', padding: 16 }}>
-            <EmployeePool onAssignEmployees={handleDropEmployee} />
-          </Content>
-        </Layout>
-
-        {/* 新增/编辑部门弹窗 */}
-        <Modal
-          title={editingDepartment ? '编辑部门' : parentId ? '新增子部门' : '新增部门'}
-          open={isModalVisible}
-          onOk={handleSubmit}
-          onCancel={() => {
-            setIsModalVisible(false);
-            form.resetFields();
-            setEditingDepartment(null);
-            setParentId(null);
-          }}
-          okText="确定"
-          cancelText="取消"
-        >
-          <Form form={form} layout="vertical">
-            <Form.Item
-              name="name"
-              label="部门名称"
-              rules={[{ required: true, message: '请输入部门名称' }]}
-            >
-              <Input placeholder="请输入部门名称" />
-            </Form.Item>
-
-            <Form.Item name="leaderId" label="负责人">
-              <Select
-                placeholder="请选择负责人"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                filterOption={(input, option) =>
-                  String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {employees.map(emp => (
-                  <Select.Option key={emp.id} value={emp.id} label={emp.name}>
-                    {emp.name} ({emp.employeeId || emp.id})
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Form>
-        </Modal>
+    <div className="page-container">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <h1>部门</h1>
+        {canWriteDepartment && (
+          <Button type="primary" onClick={() => { setEditing(null); form.resetFields(); setOpen(true); }}>
+            新建部门
+          </Button>
+        )}
       </div>
-    </DndProvider>
+      {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <Table
+        rowKey="id"
+        loading={loading}
+        dataSource={flat}
+        locale={{ emptyText: '还没有部门' }}
+        columns={[
+          {
+            title: '名称',
+            dataIndex: 'name',
+            render: (name: string, row) => <span style={{ paddingLeft: row.depth * 16 }}>{name}</span>,
+          },
+          { title: '上级', render: (_, row) => parentName(row.parentId) },
+          { title: '人数', dataIndex: 'employeeCount', render: (value) => value ?? '-' },
+          {
+            title: '操作',
+            render: (_, row) => canWriteDepartment && (
+              <Space>
+                <Button size="small" onClick={() => { setEditing(row); form.setFieldsValue({ name: row.name, parentId: row.parentId || undefined }); setOpen(true); }}>编辑</Button>
+                <Button
+                  size="small"
+                  danger
+                  onClick={() => Modal.confirm({
+                    title: `删除部门「${row.name}」？`,
+                    okText: '删除',
+                    okType: 'danger',
+                    cancelText: '取消',
+                    onOk: async () => {
+                      message.success(await departmentApi.remove(row.id));
+                      await load();
+                    },
+                  })}
+                >
+                  删除
+                </Button>
+              </Space>
+            ),
+          },
+        ]}
+      />
+      <Modal title={editing ? '编辑部门' : '新建部门'} open={open} onCancel={() => setOpen(false)} onOk={submit} confirmLoading={saving} okText="保存" cancelText="取消">
+        <Form form={form} layout="vertical">
+          <Form.Item name="name" label="部门名称" rules={[{ required: true, message: '请输入名称' }]}><Input /></Form.Item>
+          <Form.Item name="parentId" label="上级部门">
+            <Select
+              allowClear
+              placeholder="无上级则为根部门"
+              options={flat.filter((item) => item.id !== editing?.id).map((item) => ({ value: item.id, label: item.name }))}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   );
 };
 
-export default Department;
-
+export default DepartmentPage;

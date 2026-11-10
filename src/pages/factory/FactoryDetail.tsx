@@ -1,137 +1,119 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Space, Spin, message, Input, Divider } from 'antd';
+import { Alert, Button, Card, Descriptions, Form, Input, InputNumber, Select, Space, Spin, message } from 'antd';
+import type { InviteRole } from '../../domain/wechat';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CopyOutlined, WechatOutlined } from '@ant-design/icons';
-import { factoryApi } from '../../services/factory';
-import { capacityApi } from '../../services/capacity';
-import type { Factory } from '../../services/factory';
-import { useReadonly } from '../../contexts/ReadonlyContext';
+import { readErrorMessage } from '../../domain/apiEnvelope';
+import { buildGroupEntryLink } from '../../domain/groupEntry';
+import { useAccess } from '../../hooks/useAccess';
+import { factoryApi, type Factory } from '../../services/factory';
+import { createFactoryInvite } from '../../services/wechatAuth';
 
 const FactoryDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isReadonly } = useReadonly();
+  const { isFactoryAdmin, canWriteCore } = useAccess();
+  const [inviteForm] = Form.useForm<{ role: InviteRole; expiresInHours: number }>();
+  const [factory, setFactory] = useState<Factory | null>(null);
+  const [link, setLink] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [queryId, setQueryId] = useState(id);
 
-  const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [factory, setFactory] = useState<Factory & { groupEntryToken?: string } | null>(null);
-
-  const fetchDetail = async () => {
-    if (!id) return;
+  if (id !== queryId) {
+    setQueryId(id);
     setLoading(true);
-    try {
-      const res = await factoryApi.getFactoryById(id);
-      setFactory(res.factory);
-    } catch (e: any) {
-      message.error(e?.response?.data?.message || '获取厂区详情失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setError('');
+    setFactory(null);
+  }
 
   useEffect(() => {
-    fetchDetail();
+    if (!id) return;
+    let alive = true;
+    factoryApi.get(id)
+      .then((item) => { if (alive) setFactory(item); })
+      .catch((err) => { if (alive) setError(readErrorMessage(err, '厂区不存在或无权查看')); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
   }, [id]);
 
-  const handleGenerateToken = async () => {
+  const invite = async () => {
     if (!id) return;
-    setGenerating(true);
     try {
-      await capacityApi.generateGroupToken(id);
-      message.success('链接生成成功');
-      fetchDetail(); // 刷新详情以获取最新的 token
-    } catch (e: any) {
-      message.error('生成链接失败，请重试');
-    } finally {
-      setGenerating(false);
+      const values = await inviteForm.validateFields();
+      const result = await createFactoryInvite(id, values.role, values.expiresInHours, window.location.origin);
+      setInviteLink(result.url);
+      message.success(`邀请已生成，角色 ${result.role}，有效至 ${result.expiresAt}`);
+    } catch (err) {
+      message.error(readErrorMessage(err, '生成邀请失败'));
     }
   };
 
-  const entryUrl = factory?.groupEntryToken 
-    ? `${window.location.origin}/h5/group-capacity-entry?token=${factory.groupEntryToken}`
-    : '';
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(entryUrl);
-    message.success('链接已复制到剪贴板');
+  const rotate = async () => {
+    if (!id) return;
+    try {
+      const result = await factoryApi.rotateGroupToken(id, window.location.origin);
+      if (!result.token && !result.url) {
+        message.error('后端没有返回新的群入口令牌');
+        return;
+      }
+      const next = result.url || buildGroupEntryLink(window.location.origin, result.token);
+      setLink(next);
+      message.success(result.message || '旧链接已失效');
+    } catch (err) {
+      message.error(readErrorMessage(err, '轮换失败'));
+    }
   };
 
   return (
     <div className="page-container">
-      <Card title="厂区详情" extra={<Button onClick={() => navigate('/factory')}>返回列表</Button>}>
-        {isReadonly && (
-          <Alert
-            message="该业务操作请在电脑端网页完成"
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-          />
-        )}
-
-        {loading ? (
-          <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <Spin />
-          </div>
-        ) : !factory ? (
-          <div>未找到该厂区</div>
-        ) : (
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <h1>厂区详情</h1>
+        <Button onClick={() => navigate('/factory')}>返回</Button>
+      </div>
+      {error && <Alert title={error} type="error" showIcon />}
+      <Spin spinning={loading}>
+        {factory && (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="厂区名称">{factory.name}</Descriptions.Item>
-              <Descriptions.Item label="地址">{factory.address}</Descriptions.Item>
-              <Descriptions.Item label="联系人">{factory.contactPerson}</Descriptions.Item>
-              <Descriptions.Item label="联系电话">{factory.contactPhone}</Descriptions.Item>
-              <Descriptions.Item label="管理模式">{factory.managementMode}</Descriptions.Item>
-              <Descriptions.Item label="创建时间">{new Date(factory.createdAt).toLocaleString('zh-CN')}</Descriptions.Item>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="名称">{factory.name}</Descriptions.Item>
+              <Descriptions.Item label="地址">{factory.address || '-'}</Descriptions.Item>
+              <Descriptions.Item label="联系人">{factory.contactPerson || '-'}</Descriptions.Item>
+              <Descriptions.Item label="电话">{factory.contactPhone || '-'}</Descriptions.Item>
+              <Descriptions.Item label="管理模式">{factory.managementMode || '-'}</Descriptions.Item>
+              <Descriptions.Item label="我的角色">{factory.role || '-'}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">{factory.createdAt || '-'}</Descriptions.Item>
+              <Descriptions.Item label="更新时间">{factory.updatedAt || '-'}</Descriptions.Item>
             </Descriptions>
-
-            <Divider titlePlacement="left">微信群对接</Divider>
-            
-            <Card size="small" title={<span><WechatOutlined style={{ color: '#52c41a', marginRight: 8 }} />产能填报入口</span>}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <Alert 
-                  message="将下方链接设为微信群公告，组长即可直接点开为全组登记每日产能数据。" 
-                  type="info" 
-                  showIcon 
-                />
-                
-                <div style={{ marginTop: 8 }}>
-                  {!factory.groupEntryToken ? (
-                    <Button 
-                      type="primary" 
-                      icon={<WechatOutlined />} 
-                      onClick={handleGenerateToken}
-                      loading={generating}
-                    >
-                      生成群入口链接
-                    </Button>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Input 
-                          value={entryUrl} 
-                          readOnly 
-                          style={{ flex: 1, backgroundColor: '#f5f5f5' }}
-                        />
-                        <Button icon={<CopyOutlined />} onClick={handleCopy}>复制</Button>
-                      </div>
-                      <Button 
-                        size="small" 
-                        type="link" 
-                        onClick={handleGenerateToken}
-                        loading={generating}
-                        style={{ alignSelf: 'flex-start', padding: 0 }}
-                      >
-                        重新生成链接
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <Card title="微信群产量入口">
+              <p>轮换后会签发新链接，之前发出的链接立即失效。</p>
+              {canWriteCore ? <Button type="primary" onClick={rotate}>轮换并获取链接</Button> : <Alert title="只有管理员或经理可以轮换群入口" type="info" showIcon />}
+              {link && (
+                <Input.TextArea style={{ marginTop: 12 }} value={link} readOnly autoSize />
+              )}
+            </Card>
+            <Card title="成员管理">
+              <p>邀请码只返回一次。角色只能是员工、人事或经理。</p>
+              {isFactoryAdmin ? (
+                <Form form={inviteForm} layout="inline" initialValues={{ role: 'USER', expiresInHours: 72 }} onFinish={invite}>
+                  <Form.Item name="role" rules={[{ required: true }]}>
+                    <Select style={{ width: 120 }} options={[
+                      { value: 'USER', label: '员工' },
+                      { value: 'HR', label: '人事' },
+                      { value: 'MANAGER', label: '经理' },
+                    ]} />
+                  </Form.Item>
+                  <Form.Item name="expiresInHours" rules={[{ required: true, message: '请填写小时数' }]}>
+                    <InputNumber min={1} precision={0} addonAfter="小时" />
+                  </Form.Item>
+                  <Button htmlType="submit">生成邀请链接</Button>
+                </Form>
+              ) : <Alert title="只有厂区管理员可以邀请成员" type="info" showIcon />}
+              {inviteLink && <Input.TextArea style={{ marginTop: 12 }} value={inviteLink} readOnly autoSize />}
             </Card>
           </Space>
         )}
-      </Card>
+      </Spin>
     </div>
   );
 };

@@ -1,61 +1,65 @@
-import { get, post, put, del } from './request';
+import { requireList } from '../domain/apiEnvelope';
+import { buildGroupEntryLink } from '../domain/groupEntry';
+import { apiDelete, apiGet, apiPost, apiPut } from './http';
+import { endpoints } from './endpoints';
+import type { UserRole } from '../domain/roles';
 
-// 厂区信息类型
 export interface Factory {
   id: string;
   name: string;
-  address: string;
-  contactPerson: string;
-  contactPhone: string;
-  managementMode: string;
-  createdAt: string;
-  updatedAt: string;
+  address?: string | null;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
+  managementMode?: string | null;
+  role?: UserRole | string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// 创建厂区参数
-export interface CreateFactoryParams {
+export interface FactoryInput {
   name: string;
-  address: string;
-  contactPerson: string;
-  contactPhone: string;
-  managementMode: string;
-}
-
-// 更新厂区参数
-export interface UpdateFactoryParams {
-  name?: string;
   address?: string;
   contactPerson?: string;
   contactPhone?: string;
   managementMode?: string;
 }
 
-// 厂区API
 export const factoryApi = {
-  // 获取厂区列表
-  getFactories: (): Promise<{ factories: Factory[] }> => {
-    return get<{ factories: Factory[] }>('/factories');
+  list: async () => {
+    const result = await apiGet<{ factories: Factory[] }>(endpoints.factories);
+    return requireList<Factory>(result, 'factories');
   },
 
-  // 获取厂区详情
-  getFactoryById: (id: string): Promise<{ factory: Factory }> => {
-    return get<{ factory: Factory }>(`/factories/${id}`);
+  get: async (id: string) => {
+    const result = await apiGet<{ factory: Factory }>(endpoints.factory(id));
+    if (!result.factory) throw new Error('响应缺少 factory');
+    return result.factory;
   },
 
-  // 创建厂区
-  createFactory: (params: CreateFactoryParams): Promise<{ message: string; factory: Factory }> => {
-    return post<{ message: string; factory: Factory }>('/factories', params);
+  create: async (input: FactoryInput) => {
+    const result = await apiPost<{ factory: Factory }>(endpoints.factories, {
+      managementMode: 'standard',
+      ...input,
+    });
+    if (!result.factory) throw new Error('响应缺少 factory');
+    return { message: result.message, factory: result.factory };
   },
 
-  // 更新厂区
-  updateFactory: (id: string, params: UpdateFactoryParams): Promise<{ message: string; factory: Factory }> => {
-    return put<{ message: string; factory: Factory }>(`/factories/${id}`, params);
+  update: async (id: string, input: Partial<FactoryInput>) => {
+    const result = await apiPut<{ factory?: Factory }>(endpoints.factory(id), input);
+    return result.message;
   },
 
-  // 删除厂区
-  deleteFactory: (id: string): Promise<{ message: string }> => {
-    return del<{ message: string }>(`/factories/${id}`);
+  remove: async (id: string) => {
+    const result = await apiDelete(endpoints.factory(id));
+    return result.message;
+  },
+
+  rotateGroupToken: async (id: string, origin: string) => {
+    const result = await apiPost<{ token: string }>(endpoints.rotateGroupToken(id));
+    if (typeof result.token !== 'string' || !result.token) {
+      throw new Error('响应缺少 token');
+    }
+    return { message: result.message, token: result.token, url: buildGroupEntryLink(origin, result.token) };
   },
 };
-
-export default factoryApi;
