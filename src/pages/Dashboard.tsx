@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import dayjs, { type Dayjs } from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Dayjs } from 'dayjs';
 import { Alert, Button, Card, DatePicker, Progress, Row, Col, Skeleton, Space, Statistic, Typography } from 'antd';
 import {
   ArrowDownOutlined,
@@ -112,7 +112,7 @@ const Dashboard = () => {
           message="数据加载失败"
           description={error}
           action={
-            <Button size="small" onClick={loadOverview} disabled={loading}>
+            <Button size="small" onClick={() => loadOverview()} disabled={loading}>
               重试
             </Button>
           }

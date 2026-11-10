@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Tree, Tag, Dropdown, Button, Space, Popover, List, Typography } from 'antd';
+import { Tree, Tag, Dropdown, Button, Popover, List, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useDrop } from 'react-dnd';
 import {
@@ -15,6 +15,13 @@ import {
 } from '@ant-design/icons';
 import type { Department } from '../services/department';
 import { useUserStore } from '../stores/userStore';
+
+type DepartmentWithDepth = Department & { depth: number };
+
+interface DepartmentDataNode extends DataNode {
+  data?: DepartmentWithDepth;
+  children?: DepartmentDataNode[];
+}
 
 const { Text } = Typography;
 
@@ -98,7 +105,7 @@ const convertToTreeData = (
   showDeleted: boolean,
   onDropEmployee: (employeeIds: string[], departmentId: string) => void,
   depth = 0
-): DataNode[] => {
+): DepartmentDataNode[] => {
   return departments
     .filter((dept) => showDeleted || !dept.deletedAt)
     .map((dept) => {
@@ -157,7 +164,7 @@ const convertToTreeData = (
                         renderItem={(emp: any) => (
                           <List.Item style={{ padding: '2px 0' }}>
                             <Text>{emp.name}</Text>
-                            <Tag size="small" style={{ marginLeft: 8 }}>{emp.postName}</Tag>
+                            <Tag style={{ marginLeft: 8 }}>{emp.postName}</Tag>
                           </List.Item>
                         )}
                       />
@@ -171,7 +178,7 @@ const convertToTreeData = (
                       </div>
                       <List
                         size="small"
-                        dataSource={((dept as any).employees || []).map((e: any) => e.name)}
+                        dataSource={(((dept as { employees?: Array<{ name?: string }> }).employees) || []).map((employee) => employee.name || '')}
                         locale={{ emptyText: '无' }}
                         renderItem={(name) => (
                           <List.Item style={{ padding: '2px 0' }}>
@@ -220,9 +227,10 @@ const DepartmentTree: React.FC<DepartmentTreeProps> = ({
   const isSuperAdmin = hasRole('super_admin');
 
   // 渲染树节点
-  const renderTreeNode = (node: DataNode): React.ReactNode => {
-    const department = node.data as Department;
-    if (!department) return node.title;
+  const renderTreeNode = (node: DepartmentDataNode): React.ReactNode => {
+    const department = node.data;
+    const title = typeof node.title === 'function' ? node.title(node) : node.title;
+    if (!department) return title;
 
     const isDeleted = !!department.deletedAt;
 
@@ -274,19 +282,20 @@ const DepartmentTree: React.FC<DepartmentTreeProps> = ({
 
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ flex: 1 }}>{node.title}</div>
-        <Dropdown
-          menu={{ items: menuItems }}
-          trigger={['click']}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            type="text"
-            size="small"
-            icon={<MoreOutlined />}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </Dropdown>
+        <div style={{ flex: 1 }}>{title}</div>
+        <span onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            menu={{ items: menuItems }}
+            trigger={['click']}
+          >
+            <Button
+              type="text"
+              size="small"
+              icon={<MoreOutlined />}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Dropdown>
+        </span>
       </div>
     );
   };

@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
-import { Alert, Card, Collapse, Space, Tag } from 'antd';
+import { Alert, Card, Collapse, Space, Tag, Typography } from 'antd';
+import { ApartmentOutlined, RightOutlined, TeamOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { Department } from '../../services/department';
+
+const { Text } = Typography;
 
 interface Props {
   departments: Department[];
@@ -85,7 +88,7 @@ const DepartmentMobile = ({ departments, showDeleted }: Props) => {
                     <Space direction="vertical" size={2}>
                       <Space size={8}>
                         <Text style={{ fontSize: 14 }}>{node.name}</Text>
-                        {node.deletedAt ? <Tag color="error" size="small">删</Tag> : null}
+                        {node.deletedAt ? <Tag color="error">删</Tag> : null}
                       </Space>
                       {depth > 0 && (
                         <Text type="secondary" style={{ fontSize: 11 }}>

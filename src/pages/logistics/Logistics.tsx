@@ -1,4 +1,4 @@
-import { Card, Button, Table, Space, Select, Typography, Row, Col, Statistic, Input, Tag, message } from 'antd';
+import { Card, Space, Select, Typography, Row, Col, Statistic, Input, Tag, message } from 'antd';
 import { 
   PlusOutlined, 
   EditOutlined, 
@@ -38,8 +38,6 @@ const Logistics = () => {
   const [deliveredRecords, setDeliveredRecords] = useState(0);
   const [inTransitRecords, setInTransitRecords] = useState(0);
   const [pendingRecords, setPendingRecords] = useState(0);
-  const [inboundRecords, setInboundRecords] = useState(0);
-  const [outboundRecords, setOutboundRecords] = useState(0);
 
   // Fetch logistics records from API
   const fetchLogisticsRecords = async () => {
@@ -78,8 +76,6 @@ const Logistics = () => {
       setDeliveredRecords(response?.deliveredRecords || 0);
       setInTransitRecords(response?.inTransitRecords || 0);
       setPendingRecords(response?.pendingRecords || 0);
-      setInboundRecords(response?.inboundRecords || 0);
-      setOutboundRecords(response?.outboundRecords || 0);
     } catch (error) {
       message.error('获取物流统计数据失败');
       console.error('Error fetching logistics stats:', error);
@@ -382,7 +378,7 @@ const Logistics = () => {
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                 <Space>
-                  <Tag color={record.type === 'INBOUND' ? 'success' : 'error'} size="small">
+                  <Tag color={record.type === 'INBOUND' ? 'success' : 'error'}>
                     {record.type === 'INBOUND' ? '入库' : '出库'}
                   </Tag>
                   <strong style={{ fontSize: 15 }}>{record.productName}</strong>

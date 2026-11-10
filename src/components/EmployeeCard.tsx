@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Avatar, Space } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useDrag } from 'react-dnd';
@@ -32,9 +32,12 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
     }),
   });
 
+  const dragRef = useRef<HTMLDivElement>(null);
+  drag(dragRef);
+
   return (
     <div
-      ref={drag}
+      ref={dragRef}
       onClick={(e) => {
         e.stopPropagation();
         onSelect?.(employee.id);

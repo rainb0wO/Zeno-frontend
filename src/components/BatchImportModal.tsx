@@ -4,7 +4,7 @@ import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import personnelApi from '../services/personnel';
 import type { BatchImportResult } from '../services/personnel';
 
-const { Text, Link } = Typography;
+const { Text } = Typography;
 
 interface BatchImportModalProps {
   open: boolean;

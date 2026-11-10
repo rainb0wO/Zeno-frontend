@@ -4,6 +4,14 @@ import { SettingOutlined, BarChartOutlined, FileTextOutlined, UndoOutlined, Down
 import { settingsApi, type SystemPreferences } from '../services/settings';
 import { aiApi, type AIConfig, type AIProvider } from '../services/ai';
 
+// 密钥只来自用户输入，再提交到后端保存，不在前端包内置任何默认密钥
+const createEmptyAIConfig = (): AIConfig => ({
+  provider: 'qwen',
+  apiKey: '',
+  apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+  enabled: true,
+});
+
 const SystemSettings = () => {
   const [form] = Form.useForm();
   const [aiForm] = Form.useForm();
@@ -67,13 +75,8 @@ const SystemSettings = () => {
         setAiConfig(config);
         aiForm.setFieldsValue(config);
       } else {
-        // 设置默认配置：通义千问（需要用户填写真实密钥）
-        const defaultConfig: AIConfig = {
-          provider: 'qwen',
-          apiKey: 'sk-1a243ecb1bd44732af8e034f92482a4b', // 默认密钥
-          apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-          enabled: true
-        };
+        // 没有后端配置时只给出公开的接口地址，密钥必须由用户填写
+        const defaultConfig = createEmptyAIConfig();
         setAiConfig(defaultConfig);
         aiForm.setFieldsValue(defaultConfig);
       }
@@ -81,13 +84,7 @@ const SystemSettings = () => {
       console.error('加载 AI 配置失败:', error);
       const errMsg = error.response?.data?.message || error.message || '加载 AI 配置失败';
       console.warn(`AI 配置加载异常: ${errMsg}，使用默认配置`);
-      // 设置默认配置：通义千问（需要用户填写真实密钥）
-      const defaultConfig: AIConfig = {
-        provider: 'qwen',
-        apiKey: 'sk-1a243ecb1bd44732af8e034f92482a4b', // 默认密钥
-        apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-        enabled: true
-      };
+      const defaultConfig = createEmptyAIConfig();
       setAiConfig(defaultConfig);
       aiForm.setFieldsValue(defaultConfig);
     }
@@ -193,20 +190,27 @@ const SystemSettings = () => {
     return false;
   };
 
-  // 更新 AI 配置
+  // 更新 AI 配置。密钥只采用用户在表单中填写的值；未填写时不把空密钥提交上去，避免覆盖后端已保存的密钥。
   const handleAIConfigChange = async (field: keyof AIConfig, value: any) => {
     if (!aiConfig) return;
-    
-    // 密钥不允许修改，跳过
-    if (field === 'apiKey') {
-      return;
+
+    const formApiKey = aiForm.getFieldValue('apiKey');
+    const apiKey = field === 'apiKey'
+      ? String(value ?? '')
+      : (typeof formApiKey === 'string' ? formApiKey : aiConfig.apiKey);
+    const newConfig: AIConfig = {
+      ...aiConfig,
+      [field]: value,
+      apiKey,
+    };
+    const payload: Partial<AIConfig> = { ...newConfig };
+    if (!apiKey && field !== 'apiKey') {
+      delete payload.apiKey;
     }
-    
-    const newConfig = { ...aiConfig, [field]: value };
     setAiConfig(newConfig);
-    
+
     try {
-      await aiApi.updateConfig(newConfig);
+      await aiApi.updateConfig(payload);
       message.success('AI 配置已更新');
     } catch (error) {
       message.error('更新失败');
@@ -437,9 +441,9 @@ const SystemSettings = () => {
             }
           >
             <Input.Password
-              placeholder="已配置默认密钥"
-              disabled
-              value={aiConfig?.apiKey}
+              placeholder="请输入 API 密钥"
+              autoComplete="off"
+              onBlur={(e) => handleAIConfigChange('apiKey', e.target.value)}
             />
           </Form.Item>
 

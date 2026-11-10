@@ -4,6 +4,10 @@ import type { User } from '../services/auth';
 
 export type UserRole = 'admin' | 'super_admin' | 'user' | 'manager';
 
+// 后端角色是大写（例如 SUPER_ADMIN），权限判断使用小写。比较前统一转成小写。
+const canonicalRole = (role: string | null | undefined): string =>
+  (role ?? '').trim().toLowerCase();
+
 interface UserState {
   user: User | null;
   token: string | null;
@@ -32,7 +36,8 @@ export const useUserStore = create<UserState>()(
           console.log('setUser 调用:', user);
           // 同步保存到 localStorage
           localStorage.setItem('user', JSON.stringify(user));
-          const role = (user as any).role || 'user';
+          const rawRole = (user as { role?: string | null }).role;
+          const role = (rawRole && rawRole.trim() ? canonicalRole(rawRole) : 'user') as UserRole;
           const permissions = (user as any).permissions || [];
           return {
             user,
@@ -77,13 +82,13 @@ export const useUserStore = create<UserState>()(
 
       hasPermission: (permission: string) => {
         const { permissions, role } = get();
-        if (role === 'super_admin') return true;
+        if (canonicalRole(role) === 'super_admin') return true;
         return permissions.includes(permission);
       },
 
       hasRole: (role: UserRole) => {
         const { role: userRole } = get();
-        return userRole === role;
+        return canonicalRole(userRole) === canonicalRole(role);
       },
     }),
     {

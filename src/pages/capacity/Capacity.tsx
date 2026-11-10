@@ -11,7 +11,6 @@ import type { Process } from '../../services/process';
 import ProcessGenerator from '../../components/ProcessGenerator';
 import PieceWorkManager from '../../components/PieceWorkManager';
 import SmartScheduleGenerator from '../../components/SmartScheduleGenerator';
-import ResponsiveDataList from '../../components/ResponsiveDataList';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
@@ -188,136 +187,6 @@ const Capacity = () => {
     return <Tag color={status_config.color}>{status_config.text}</Tag>;
   };
 
-  const columns = [
-    { title: '产品名称', dataIndex: 'productName', key: 'productName' },
-    { title: '目标产量', dataIndex: 'targetQty', key: 'targetQty' },
-    { 
-      title: '实际产量', 
-      dataIndex: 'actualQty', 
-      key: 'actualQty',
-      render: (qty: number) => qty || 0
-    },
-    { 
-      title: '完成进度', 
-      dataIndex: 'progress', 
-      key: 'progress', 
-      render: (progress: number) => (
-        <Progress 
-          percent={progress || 0} 
-          size="small" 
-          status={progress >= 100 ? 'success' : progress >= 80 ? 'active' : 'normal'}
-        />
-      )
-    },
-    {
-      title: '优先级',
-      dataIndex: 'priorityLevel',
-      key: 'priorityLevel',
-      render: (level: string, record: any) => {
-        if (!level) return <Tag color="default">未计算</Tag>;
-        const priorityMap: Record<string, { color: string; text: string }> = {
-          HIGH: { color: 'red', text: '高' },
-          MEDIUM: { color: 'orange', text: '中' },
-          LOW: { color: 'green', text: '低' },
-        };
-        const config = priorityMap[level] || { color: 'default', text: level };
-        return (
-          <div>
-            <Tag color={config.color}>{config.text}</Tag>
-            {record.isManualPriority && <Tag color="blue">手动</Tag>}
-          </div>
-        );
-      },
-    },
-    {
-      title: '优先级分数',
-      dataIndex: 'priorityScore',
-      key: 'priorityScore',
-      render: (score: number) => score ? `${score}分` : '-',
-    },
-    { title: '开始日期', dataIndex: 'startDate', key: 'startDate' },
-    { title: '结束日期', dataIndex: 'endDate', key: 'endDate' },
-    { 
-      title: '状态', 
-      dataIndex: 'status', 
-      key: 'status', 
-      render: (status: string) => getStatusTag(status)
-    },
-    { 
-      title: '操作', 
-      key: 'action', 
-      render: (_: any, record: ProductionPlan) => (
-        <Space size="small">
-          <Button 
-            type="link" 
-            size="small" 
-            onClick={(e) => {
-              e.stopPropagation();
-              showEditModal(record);
-            }}
-          >
-            编辑
-          </Button>
-          <Button 
-            type="link" 
-            danger 
-            size="small" 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete(record.id);
-            }}
-          >
-            删除
-          </Button>
-          <Button 
-            type="link" 
-            icon={<ToolOutlined />} 
-            size="small" 
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedPlanForProcess(record);
-              setShowProcessGenerator(true);
-            }}
-          >
-            工序
-          </Button>
-          <Button 
-            type="link" 
-            icon={<FileTextOutlined />} 
-            size="small" 
-            onClick={async (e) => {
-              e.stopPropagation();
-              // 加载工序
-              try {
-                const res: any = await processApi.getProcessesByPlan(record.id);
-                console.log('获取工序响应:', res);
-                setProcesses(res.data.data || res.data || []);
-                setSelectedPlanForProcess(record);
-                setShowPieceWorkManager(true);
-              } catch (error) {
-                console.error('加载工序失败:', error);
-                message.error('加载工序失败');
-              }
-            }}
-          >
-            计件
-          </Button>
-          <Button 
-            type="link" 
-            icon={<CalendarOutlined />} 
-            size="small" 
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedPlanForProcess(record);
-              setShowScheduleGenerator(true);
-            }}
-          >
-            排班
-          </Button>
-        </Space>
-      ),
-    },
-  ];
 
   return (
     <div className="page-container">
@@ -419,7 +288,7 @@ const Capacity = () => {
                       }
                     />
 
-                    <Descriptions column={2} size="small" styles={{ itemLabel: { width: 56, whiteSpace: 'nowrap' }, itemContent: { minWidth: 0 } }}>
+                    <Descriptions column={2} size="small" styles={{ label: { width: 56, whiteSpace: 'nowrap' }, content: { minWidth: 0 } }}>
                       <Descriptions.Item label="目标">{record.targetQty}</Descriptions.Item>
                       <Descriptions.Item label="实际">{record.actualQty || 0}</Descriptions.Item>
                       <Descriptions.Item label="优先级">
