@@ -1,6 +1,7 @@
 export const endpoints = {
   login: '/auth/login',
   register: '/auth/register',
+  logout: '/auth/logout',
   me: '/auth/me',
   switchFactory: '/auth/switch-factory',
   wechatMpAuthorize: '/auth/wechat/mp/authorize',

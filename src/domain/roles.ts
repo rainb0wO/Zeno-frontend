@@ -27,7 +27,11 @@ export function canWriteDepartment(role: string | null | undefined): boolean {
   return normalized === 'ADMIN' || normalized === 'MANAGER' || normalized === 'HR' || normalized === 'SUPER_ADMIN';
 }
 
-/** POST /employees 只写了 ADMIN 与 MANAGER。 */
+/** HR 可以新建和修改员工，不能删除。 */
 export function canWriteEmployee(role: string | null | undefined): boolean {
-  return canWriteCore(role);
+  return canWriteCore(role) || canonicalRole(role) === 'HR';
+}
+
+export function canDeleteEmployee(role: string | null | undefined): boolean {
+  return isFactoryAdmin(role);
 }

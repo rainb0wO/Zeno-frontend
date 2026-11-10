@@ -1,4 +1,4 @@
-import { canWriteCore, canWriteDepartment, canWriteEmployee, isFactoryAdmin } from '../domain/roles';
+import { canDeleteEmployee, canWriteCore, canWriteDepartment, canWriteEmployee, isFactoryAdmin } from '../domain/roles';
 import { useUserStore } from '../stores/userStore';
 
 export function useAccess() {
@@ -9,5 +9,6 @@ export function useAccess() {
     canWriteCore: canWriteCore(role),
     canWriteDepartment: canWriteDepartment(role),
     canWriteEmployee: canWriteEmployee(role),
+    canDeleteEmployee: canDeleteEmployee(role),
   };
 }

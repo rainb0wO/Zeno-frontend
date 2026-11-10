@@ -12,7 +12,7 @@ function flatten(nodes: Department[]): Department[] {
 
 const PersonnelPage = () => {
   const factory = useFactoryStore((state) => state.currentFactory);
-  const { canWriteEmployee } = useAccess();
+  const { canWriteEmployee, canDeleteEmployee } = useAccess();
   const [form] = Form.useForm<EmployeeInput>();
   const [rows, setRows] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -88,9 +88,9 @@ const PersonnelPage = () => {
           { title: '薪资类型', dataIndex: 'salaryType', render: (value) => value || '-' },
           {
             title: '操作',
-            render: (_, row) => canWriteEmployee && (
+            render: (_, row) => (canWriteEmployee || canDeleteEmployee) && (
               <Space>
-                <Button size="small" onClick={() => {
+                {canWriteEmployee && <Button size="small" onClick={() => {
                   setEditing(row);
                   form.setFieldsValue({
                     name: row.name,
@@ -101,8 +101,8 @@ const PersonnelPage = () => {
                     status: row.status || 'active',
                   });
                   setOpen(true);
-                }}>编辑</Button>
-                <Button size="small" danger onClick={() => Modal.confirm({
+                }}>编辑</Button>}
+                {canDeleteEmployee && <Button size="small" danger onClick={() => Modal.confirm({
                   title: `删除员工「${row.name}」？`,
                   okText: '删除',
                   okType: 'danger',
@@ -111,7 +111,7 @@ const PersonnelPage = () => {
                     message.success(await personnelApi.remove(row.id));
                     await load();
                   },
-                })}>删除</Button>
+                })}>删除</Button>}
               </Space>
             ),
           },

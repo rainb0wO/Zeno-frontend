@@ -83,7 +83,15 @@ export const authApi = {
     return { message: result.message, user: result.user, factoryId: result.user.factoryId };
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await apiPost<{ tokenRevoked: boolean }>(endpoints.logout, { deviceId: getDeviceId() }, {
+        skipErrorToast: true,
+        skipAuthRedirect: true,
+      });
+    } catch {
+      // 接口失败也要清掉本地登录态。
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login';

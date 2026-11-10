@@ -57,7 +57,11 @@ const Dashboard = () => {
           <Col xs={24} sm={12} lg={8}><Card><Statistic title="今日实绩" value={data.capacity.todayActual} /></Card></Col>
           <Col xs={24} sm={12} lg={8}><Card><Statistic title="本月工资合计" prefix="¥" precision={2} value={data.salary.monthTotal} /></Card></Col>
           <Col xs={24} sm={12} lg={8}><Card><Statistic title="应出勤" value={data.attendance.shouldAttend} /></Card></Col>
-          <Col xs={24} sm={12} lg={8}><Card><Statistic title="实出勤" value={data.attendance.actualAttend} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card>
+              <Statistic title="实出勤" value="未启用" />
+            </Card>
+          </Col>
         </Row>
         <Card title="进行中的计划" style={{ marginTop: 16 }}>
           <Table

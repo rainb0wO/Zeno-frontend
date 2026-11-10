@@ -80,6 +80,10 @@ const FactoryDetail = () => {
               <Descriptions.Item label="地址">{factory.address || '-'}</Descriptions.Item>
               <Descriptions.Item label="联系人">{factory.contactPerson || '-'}</Descriptions.Item>
               <Descriptions.Item label="电话">{factory.contactPhone || '-'}</Descriptions.Item>
+              <Descriptions.Item label="管理模式">{factory.managementMode || '-'}</Descriptions.Item>
+              <Descriptions.Item label="我的角色">{factory.role || '-'}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">{factory.createdAt || '-'}</Descriptions.Item>
+              <Descriptions.Item label="更新时间">{factory.updatedAt || '-'}</Descriptions.Item>
             </Descriptions>
             <Card title="微信群产量入口">
               <p>轮换后会签发新链接，之前发出的链接立即失效。</p>

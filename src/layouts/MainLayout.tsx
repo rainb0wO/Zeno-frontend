@@ -70,8 +70,9 @@ const MainLayout = () => {
   }, [factories, setCurrentFactory]);
 
   const logout = () => {
-    clearAuth();
-    authApi.logout();
+    void authApi.logout().finally(() => {
+      clearAuth();
+    });
   };
 
   const onMenuClick = ({ key }: { key: string }) => {
