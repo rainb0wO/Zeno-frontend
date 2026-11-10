@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, DatePicker, Empty, Form, Input, InputNumber, Modal, Space, Table, message } from 'antd';
+import { Alert, Button, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { readErrorMessage } from '../../domain/apiEnvelope';
@@ -11,6 +11,7 @@ interface PlanForm {
   productName: string;
   targetQty: number;
   range: [dayjs.Dayjs, dayjs.Dayjs];
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
   clothingType?: string;
   craftType?: string;
   material?: string;
@@ -18,7 +19,7 @@ interface PlanForm {
 
 const CapacityPage = () => {
   const factory = useFactoryStore((state) => state.currentFactory);
-  const { canEdit } = useAccess();
+  const { canWriteCore, isFactoryAdmin } = useAccess();
   const navigate = useNavigate();
   const [form] = Form.useForm<PlanForm>();
   const [rows, setRows] = useState<ProductionPlan[]>([]);
@@ -33,7 +34,7 @@ const CapacityPage = () => {
     setLoading(true);
     setError('');
     try {
-      setRows(await capacityApi.list(factoryId));
+      setRows(await capacityApi.list());
     } catch (err) {
       setError(readErrorMessage(err, '生产计划加载失败'));
     } finally {
@@ -49,11 +50,11 @@ const CapacityPage = () => {
     if (!factory?.id) return;
     const values = await form.validateFields();
     const input: PlanInput = {
-      factoryId: factory.id,
       productName: values.productName.trim(),
       targetQty: values.targetQty,
       startDate: values.range[0].format('YYYY-MM-DD'),
       endDate: values.range[1].format('YYYY-MM-DD'),
+      status: values.status,
       clothingType: values.clothingType?.trim(),
       craftType: values.craftType?.trim(),
       material: values.material?.trim(),
@@ -77,7 +78,7 @@ const CapacityPage = () => {
     <div className="page-container">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
         <h1>生产计划</h1>
-        {canEdit && <Button type="primary" onClick={() => { form.resetFields(); setOpen(true); }}>新建计划</Button>}
+        {canWriteCore && <Button type="primary" onClick={() => { form.resetFields(); setOpen(true); }}>新建计划</Button>}
       </div>
       {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
       <Table
@@ -97,7 +98,7 @@ const CapacityPage = () => {
             render: (_, row) => (
               <Space>
                 <Button size="small" onClick={() => navigate(`/capacity/${row.id}`)}>工序与计件</Button>
-                {canEdit && (
+                {isFactoryAdmin && (
                   <Button size="small" danger onClick={() => Modal.confirm({
                     title: `删除计划「${row.productName}」？`,
                     okText: '删除',
@@ -119,6 +120,14 @@ const CapacityPage = () => {
           <Form.Item name="productName" label="产品名称" rules={[{ required: true, message: '请输入产品名称' }]}><Input /></Form.Item>
           <Form.Item name="targetQty" label="目标产量" rules={[{ required: true, message: '请输入目标产量' }]}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="range" label="起止日期" rules={[{ required: true, message: '请选择日期' }]}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="status" label="状态" initialValue="IN_PROGRESS" rules={[{ required: true, message: '请选择状态' }]}>
+            <Select options={[
+              { value: 'PENDING', label: '待开始' },
+              { value: 'IN_PROGRESS', label: '进行中' },
+              { value: 'COMPLETED', label: '已完成' },
+              { value: 'DELAYED', label: '延期' },
+            ]} />
+          </Form.Item>
           <Form.Item name="clothingType" label="服装类型"><Input placeholder="用于生成工序，例如衬衫" /></Form.Item>
           <Form.Item name="craftType" label="工艺"><Input placeholder="例如平车" /></Form.Item>
           <Form.Item name="material" label="面料"><Input placeholder="例如纯棉" /></Form.Item>

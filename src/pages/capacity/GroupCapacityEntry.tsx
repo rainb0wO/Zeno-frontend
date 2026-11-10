@@ -12,6 +12,7 @@ const GroupCapacityEntry = () => {
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [view, setView] = useState<GroupInitView | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number | null>>({});
+  const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -23,13 +24,16 @@ const GroupCapacityEntry = () => {
     try {
       const data = await groupEntryApi.init(token, nextDate.format('YYYY-MM-DD'));
       const initial: Record<string, number | null> = {};
+      const initialRemarks: Record<string, string> = {};
       data.groups.forEach((group) => {
         group.employees.forEach((employee) => {
           initial[employee.id] = employee.quantity;
+          initialRemarks[employee.id] = employee.remark;
         });
       });
       setView(data);
       setQuantities(initial);
+      setRemarks(initialRemarks);
     } catch (err) {
       setView(null);
       setError(readErrorMessage(err, '链接无效或已失效'));
@@ -52,22 +56,29 @@ const GroupCapacityEntry = () => {
 
   const save = async () => {
     if (!view) return;
-    const records = view.groups.flatMap((group) => group.employees.flatMap((employee) => {
-      const quantity = quantities[employee.id];
-      if (quantity === null || quantity === undefined) return [];
-      return [{ employeeId: employee.id, quantity }];
-    }));
-    if (!records.length) {
+    const batches = view.groups.flatMap((group) => {
+      const records = group.employees.flatMap((employee) => {
+        const quantity = quantities[employee.id];
+        if (quantity === null || quantity === undefined) return [];
+        return [{ employeeId: employee.id, quantity, remark: remarks[employee.id] || '' }];
+      });
+      return records.length ? [{ groupId: group.id, records }] : [];
+    });
+    if (!batches.length) {
       message.warning('请至少填写一名员工的产量');
       return;
     }
     setSaving(true);
     try {
-      const text = await groupEntryApi.save({
-        token,
-        date: date.format('YYYY-MM-DD'),
-        records,
-      });
+      let text = '保存成功';
+      for (const batch of batches) {
+        text = await groupEntryApi.save({
+          token,
+          date: date.format('YYYY-MM-DD'),
+          groupId: batch.groupId,
+          records: batch.records,
+        });
+      }
       message.success(text || '产量已保存');
     } catch (err) {
       message.error(readErrorMessage(err, '保存失败'));
@@ -106,7 +117,7 @@ const GroupCapacityEntry = () => {
                 <label key={employee.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: '1px solid #f0f0f0' }}>
                   <span>
                     <strong style={{ fontSize: 16 }}>{employee.name}</strong>
-                    {employee.employeeNo && <span style={{ display: 'block', color: '#999', fontSize: 12 }}>{employee.employeeNo}</span>}
+                    {employee.staffNo && <span style={{ display: 'block', color: '#999', fontSize: 12 }}>工号 {employee.staffNo}</span>}
                   </span>
                   <InputNumber
                     min={0}

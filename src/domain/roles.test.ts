@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { canEdit, isAdmin, toUserRole } from './roles';
+import { canWriteCore, canWriteDepartment, canWriteEmployee, isFactoryAdmin, toUserRole } from './roles';
 
 describe('roles', () => {
-  it('normalizes backend uppercase roles', () => {
-    expect(toUserRole('admin')).toBe('ADMIN');
-    expect(toUserRole(' SUPER_ADMIN ')).toBe('SUPER_ADMIN');
-    expect(isAdmin('ADMIN')).toBe(true);
-    expect(canEdit('MANAGER')).toBe(true);
-    expect(canEdit('USER')).toBe(false);
-    expect(isAdmin('USER')).toBe(false);
+  it('follows the documented write rules', () => {
+    expect(toUserRole('hr')).toBe('HR');
+    expect(isFactoryAdmin('ADMIN')).toBe(true);
+    expect(isFactoryAdmin('MANAGER')).toBe(false);
+    expect(canWriteCore('MANAGER')).toBe(true);
+    expect(canWriteCore('HR')).toBe(false);
+    expect(canWriteEmployee('MANAGER')).toBe(true);
+    expect(canWriteEmployee('HR')).toBe(false);
+    expect(canWriteDepartment('HR')).toBe(true);
+    expect(canWriteDepartment('SUPER_ADMIN')).toBe(true);
+    expect(canWriteDepartment('USER')).toBe(false);
   });
 });

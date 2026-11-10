@@ -1,16 +1,18 @@
-import { readNamedList } from '../domain/apiEnvelope';
+import { requireList } from '../domain/apiEnvelope';
 import { apiDelete, apiGet, apiPost, apiPut } from './http';
 import { endpoints } from './endpoints';
 
+export type PlanStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
+
 export interface ProductionPlan {
   id: string;
-  factoryId?: string;
   productName: string;
   targetQty: number;
   actualQty?: number;
+  progress?: number;
   startDate: string;
   endDate: string;
-  status?: string;
+  status?: PlanStatus;
   clothingType?: string | null;
   craftType?: string | null;
   material?: string | null;
@@ -21,7 +23,7 @@ export interface PlanInput {
   targetQty: number;
   startDate: string;
   endDate: string;
-  factoryId: string;
+  status?: PlanStatus;
   clothingType?: string;
   craftType?: string;
   material?: string;
@@ -39,36 +41,31 @@ export function planStatusLabel(status?: string): string {
   return STATUS_LABEL[status] || status;
 }
 
-function readPlan(data: unknown): ProductionPlan {
-  const body = (data && typeof data === 'object' ? data : {}) as { plan?: ProductionPlan; productionPlan?: ProductionPlan };
-  return body.plan || body.productionPlan || (data as ProductionPlan);
-}
-
 export const capacityApi = {
-  list: async (factoryId?: string) => {
-    const result = await apiGet<unknown>(endpoints.plans, factoryId ? { factoryId } : undefined);
-    return readNamedList<ProductionPlan>(result.data, 'plans').length
-      ? readNamedList<ProductionPlan>(result.data, 'plans')
-      : readNamedList<ProductionPlan>(result.data, 'productionPlans');
+  list: async () => {
+    const result = await apiGet<{ productionPlans: ProductionPlan[] }>(endpoints.plans);
+    return requireList<ProductionPlan>(result, 'productionPlans');
   },
 
   get: async (id: string) => {
-    const result = await apiGet<unknown>(endpoints.plan(id));
-    return readPlan(result.data);
+    const result = await apiGet<{ productionPlan: ProductionPlan }>(endpoints.plan(id));
+    if (!result.productionPlan) throw new Error('响应缺少 productionPlan');
+    return result.productionPlan;
   },
 
   create: async (input: PlanInput) => {
-    const result = await apiPost<unknown>(endpoints.plans, input);
-    return { message: result.message, plan: readPlan(result.data) };
+    const result = await apiPost<{ productionPlan: ProductionPlan }>(endpoints.plans, input);
+    if (!result.productionPlan) throw new Error('响应缺少 productionPlan');
+    return { message: result.message, plan: result.productionPlan };
   },
 
   update: async (id: string, input: Partial<PlanInput>) => {
-    const result = await apiPut<unknown>(endpoints.plan(id), input);
+    const result = await apiPut(endpoints.plan(id), input);
     return result.message;
   },
 
   remove: async (id: string) => {
-    const result = await apiDelete<unknown>(endpoints.plan(id));
+    const result = await apiDelete(endpoints.plan(id));
     return result.message;
   },
 };

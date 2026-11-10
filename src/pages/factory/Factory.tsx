@@ -8,7 +8,7 @@ import { factoryApi, type Factory, type FactoryInput } from '../../services/fact
 
 const FactoryPage = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAccess();
+  const { isFactoryAdmin, canWriteCore } = useAccess();
   const [form] = Form.useForm<FactoryInput>();
   const [rows, setRows] = useState<Factory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +87,7 @@ const FactoryPage = () => {
 
   const rotate = async (factory: Factory) => {
     try {
-      const result = await factoryApi.rotateGroupToken(factory.id);
+      const result = await factoryApi.rotateGroupToken(factory.id, window.location.origin);
       if (!result.token && !result.url) {
         message.error('后端没有返回新的群入口令牌');
         return;
@@ -120,7 +120,7 @@ const FactoryPage = () => {
     <div className="page-container">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
         <h1>厂区</h1>
-        {isAdmin && <Button type="primary" onClick={openCreate}>新建厂区</Button>}
+        {canWriteCore && <Button type="primary" onClick={openCreate}>新建厂区</Button>}
       </div>
       <p style={{ color: '#666' }}>这里只列出你已加入的厂区。切换厂区请用顶栏。</p>
       {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
@@ -140,9 +140,9 @@ const FactoryPage = () => {
             render: (_, factory) => (
               <Space wrap>
                 <Button size="small" onClick={() => navigate(`/factory/${factory.id}`)}>详情</Button>
-                {isAdmin && <Button size="small" onClick={() => rotate(factory)}>轮换群入口</Button>}
-                {isAdmin && <Button size="small" onClick={() => openEdit(factory)}>编辑</Button>}
-                {isAdmin && <Button size="small" danger onClick={() => remove(factory)}>删除</Button>}
+                {canWriteCore && <Button size="small" onClick={() => rotate(factory)}>轮换群入口</Button>}
+                {canWriteCore && <Button size="small" onClick={() => openEdit(factory)}>编辑</Button>}
+                {isFactoryAdmin && <Button size="small" danger onClick={() => remove(factory)}>删除</Button>}
               </Space>
             ),
           },

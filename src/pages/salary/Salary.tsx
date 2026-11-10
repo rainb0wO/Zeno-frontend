@@ -17,7 +17,7 @@ const SalaryPage = () => {
 
   useEffect(() => {
     if (!factory?.id) return;
-    personnelApi.list(factory.id)
+    personnelApi.list().then((page) => page.employees)
       .then(setEmployees)
       .catch((err) => setError(readErrorMessage(err, '员工列表加载失败')));
   }, [factory?.id]);
@@ -57,7 +57,7 @@ const SalaryPage = () => {
               showSearch
               optionFilterProp="label"
               placeholder={employees.length ? '选择员工' : '该厂区还没有员工'}
-              options={employees.map((item) => ({ value: item.id, label: `${item.name}${item.employeeNo ? `（${item.employeeNo}）` : ''}` }))}
+              options={employees.map((item) => ({ value: item.id, label: `${item.name}${item.employeeId ? `（${item.employeeId}）` : ''}` }))}
             />
           </Form.Item>
           <Form.Item name="month" label="月份" rules={[{ required: true, message: '请选择月份' }]}>

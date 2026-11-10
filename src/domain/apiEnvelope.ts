@@ -10,17 +10,17 @@ export class ApiError extends Error {
   }
 }
 
-export interface ApiSuccess<T> {
+/** 成功体是 `{ code: 0, message, ...字段 }`，业务字段与 code 平级。 */
+export type ApiEnvelope<T extends object = Record<string, never>> = {
+  code: 0;
   message: string;
-  data: T;
-}
+} & T;
 
-/** 成功响应必须是 `{ code: 0, message, data }`。 */
-export function unwrapEnvelope<T>(body: unknown): ApiSuccess<T> {
+export function unwrapEnvelope<T extends object>(body: unknown): ApiEnvelope<T> {
   if (!body || typeof body !== 'object' || !('code' in body)) {
     throw new ApiError('服务器响应格式不正确', -1);
   }
-  const envelope = body as { code?: unknown; message?: unknown; data?: T };
+  const envelope = body as { code?: unknown; message?: unknown };
   const code = Number(envelope.code);
   if (!Number.isFinite(code)) {
     throw new ApiError('服务器响应格式不正确', -1);
@@ -31,19 +31,15 @@ export function unwrapEnvelope<T>(body: unknown): ApiSuccess<T> {
       : '请求失败';
     throw new ApiError(message, code);
   }
-  return {
-    message: typeof envelope.message === 'string' && envelope.message ? envelope.message : '操作成功',
-    data: envelope.data as T,
-  };
+  return body as ApiEnvelope<T>;
 }
 
-export function readNamedList<T>(data: unknown, key: string): T[] {
-  if (Array.isArray(data)) return data as T[];
-  if (data && typeof data === 'object') {
-    const value = (data as Record<string, unknown>)[key];
-    if (Array.isArray(value)) return value as T[];
+export function requireList<T>(body: object, key: string): T[] {
+  const value = (body as Record<string, unknown>)[key];
+  if (!Array.isArray(value)) {
+    throw new ApiError(`响应缺少 ${key}`, -1);
   }
-  return [];
+  return value as T[];
 }
 
 export function readErrorMessage(error: unknown, fallback = '请求失败'): string {

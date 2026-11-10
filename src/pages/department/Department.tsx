@@ -20,7 +20,7 @@ function flatten(nodes: Department[], depth = 0): FlatDepartment[] {
 
 const DepartmentPage = () => {
   const factory = useFactoryStore((state) => state.currentFactory);
-  const { canEdit } = useAccess();
+  const { canWriteDepartment } = useAccess();
   const [form] = Form.useForm<{ name: string; parentId?: string }>();
   const [rows, setRows] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ const DepartmentPage = () => {
     setLoading(true);
     setError('');
     try {
-      setRows(await departmentApi.list(factoryId));
+      setRows(await departmentApi.list());
     } catch (err) {
       setError(readErrorMessage(err, '部门加载失败'));
     } finally {
@@ -60,7 +60,7 @@ const DepartmentPage = () => {
     try {
       const text = editing
         ? await departmentApi.update(editing.id, { name: values.name, parentId: values.parentId || null })
-        : await departmentApi.create({ name: values.name, factoryId: factory.id, parentId: values.parentId || null });
+        : await departmentApi.create({ name: values.name, parentId: values.parentId || null });
       message.success(text);
       setOpen(false);
       await load();
@@ -79,7 +79,7 @@ const DepartmentPage = () => {
     <div className="page-container">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
         <h1>部门</h1>
-        {canEdit && (
+        {canWriteDepartment && (
           <Button type="primary" onClick={() => { setEditing(null); form.resetFields(); setOpen(true); }}>
             新建部门
           </Button>
@@ -101,7 +101,7 @@ const DepartmentPage = () => {
           { title: '人数', dataIndex: 'employeeCount', render: (value) => value ?? '-' },
           {
             title: '操作',
-            render: (_, row) => canEdit && (
+            render: (_, row) => canWriteDepartment && (
               <Space>
                 <Button size="small" onClick={() => { setEditing(row); form.setFieldsValue({ name: row.name, parentId: row.parentId || undefined }); setOpen(true); }}>编辑</Button>
                 <Button

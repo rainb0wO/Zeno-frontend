@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Alert, Card, Col, Empty, Row, Spin, Statistic } from 'antd';
+import { Alert, Card, Col, Empty, Row, Spin, Statistic, Table } from 'antd';
 import { dashboardApi, type DashboardOverview } from '../services/dashboard';
 import { readErrorMessage } from '../domain/apiEnvelope';
 import { useFactoryStore } from '../stores/factoryStore';
 
 const empty: DashboardOverview = {
-  employeeCount: 0,
-  departmentCount: 0,
-  planCount: 0,
-  todayOutput: 0,
-  monthPiecePay: 0,
+  employee: { total: 0, momGrowthRate: 0 },
+  capacity: { todayRate: 0, todayPlan: 0, todayActual: 0 },
+  salary: { monthTotal: 0, momGrowthRate: 0, base: 0, bonus: 0, allowance: 0 },
+  attendance: { todayRate: 0, shouldAttend: 0, actualAttend: 0 },
+  capacityPlans: [],
 };
 
 const Dashboard = () => {
@@ -28,7 +28,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     let alive = true;
-    dashboardApi.overview(factoryId)
+    dashboardApi.overview()
       .then((overview) => {
         if (alive) setData(overview);
       })
@@ -43,29 +43,36 @@ const Dashboard = () => {
     };
   }, [factoryId]);
 
-  const nothingYet = !loading && !error
-    && data.employeeCount === 0
-    && data.planCount === 0
-    && data.todayOutput === 0;
-
   return (
     <div className="page-container">
-      <div className="page-header">
-        <h1>仪表盘</h1>
-      </div>
+      <div className="page-header"><h1>仪表盘</h1></div>
       <p style={{ color: '#666', marginTop: 0 }}>
-        {factory ? `当前厂区：${factory.name}` : '登录后只显示你已加入的厂区数据'}
+        {factory ? `当前厂区：${factory.name}` : '统计范围是当前厂区，日期默认今天'}
       </p>
       {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
       <Spin spinning={loading}>
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} lg={8}><Card><Statistic title="员工人数" value={data.employeeCount} /></Card></Col>
-          <Col xs={24} sm={12} lg={8}><Card><Statistic title="部门数" value={data.departmentCount} /></Card></Col>
-          <Col xs={24} sm={12} lg={8}><Card><Statistic title="生产计划" value={data.planCount} /></Card></Col>
-          <Col xs={24} sm={12} lg={8}><Card><Statistic title="今日产量" value={data.todayOutput} /></Card></Col>
-          <Col xs={24} sm={12} lg={8}><Card><Statistic title="本月计件工资" prefix="¥" precision={2} value={data.monthPiecePay} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}><Card><Statistic title="员工人数" value={data.employee.total} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}><Card><Statistic title="今日计划" value={data.capacity.todayPlan} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}><Card><Statistic title="今日实绩" value={data.capacity.todayActual} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}><Card><Statistic title="本月工资合计" prefix="¥" precision={2} value={data.salary.monthTotal} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}><Card><Statistic title="应出勤" value={data.attendance.shouldAttend} /></Card></Col>
+          <Col xs={24} sm={12} lg={8}><Card><Statistic title="实出勤" value={data.attendance.actualAttend} /></Card></Col>
         </Row>
-        {nothingYet && <Empty description="这个厂区还没有员工或生产计划" style={{ marginTop: 32 }} />}
+        <Card title="进行中的计划" style={{ marginTop: 16 }}>
+          <Table
+            rowKey={(row) => row.name}
+            pagination={false}
+            dataSource={data.capacityPlans}
+            locale={{ emptyText: <Empty description="今天没有进行中的计划" /> }}
+            columns={[
+              { title: '计划', dataIndex: 'name' },
+              { title: '计划量', dataIndex: 'plan' },
+              { title: '实绩', dataIndex: 'actual' },
+              { title: '完成率', dataIndex: 'rate', render: (value: number) => `${value}` },
+            ]}
+          />
+        </Card>
       </Spin>
     </div>
   );

@@ -1,57 +1,52 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildInviteBind,
+  buildInviteRequest,
   buildPasswordBind,
-  isWeChatNotConfigured,
-  readAuthorizeOutcome,
-  readInviteLink,
+  isWeChatUnavailable,
+  readAuthorizeUrl,
+  readInvite,
   readWeChatBindings,
   readWeChatCallback,
   wechatAuthorizePlan,
 } from './wechat';
 
-describe('wechat authorize', () => {
-  it('uses the official account inside WeChat and QR login on desktop', () => {
-    expect(wechatAuthorizePlan('Mozilla/5.0 MicroMessenger/8.0')).toEqual({
-      channel: 'mp',
-      scope: 'snsapi_base',
-    });
-    expect(wechatAuthorizePlan('Mozilla/5.0 MicroMessenger/8.0', true).scope).toBe('snsapi_userinfo');
-    expect(wechatAuthorizePlan('Mozilla/5.0 Chrome/120')).toEqual({
-      channel: 'open',
-      scope: 'snsapi_login',
-    });
+describe('wechat contract', () => {
+  it('picks mp or open and only sends scope for the official account', () => {
+    expect(wechatAuthorizePlan('MicroMessenger')).toEqual({ channel: 'mp', scope: 'snsapi_base' });
+    expect(wechatAuthorizePlan('MicroMessenger', true)).toEqual({ channel: 'mp', scope: 'snsapi_userinfo' });
+    expect(wechatAuthorizePlan('Chrome')).toEqual({ channel: 'open' });
   });
 
-  it('hides the button when the backend says it is not configured', () => {
-    expect(isWeChatNotConfigured('微信开放平台未配置')).toBe(true);
-    expect(readAuthorizeOutcome(null, '未配置')).toEqual({ configured: false, url: null });
-    expect(readAuthorizeOutcome({ configured: false }, 'ok')).toEqual({ configured: false, url: null });
-    expect(readAuthorizeOutcome({ authorizeUrl: 'https://open.weixin.qq.com/connect/oauth2' }, 'ok')).toEqual({
-      configured: true,
-      url: 'https://open.weixin.qq.com/connect/oauth2',
-    });
+  it('reads url only, and treats 5031/5032 as not configured', () => {
+    expect(readAuthorizeUrl({ url: 'https://open.weixin.qq.com/connect/oauth2' })).toBe('https://open.weixin.qq.com/connect/oauth2');
+    expect(readAuthorizeUrl({})).toBeNull();
+    expect(isWeChatUnavailable({ status: 503, code: 5031 })).toBe(true);
+    expect(isWeChatUnavailable({ status: 503, code: 5032 })).toBe(true);
+    expect(isWeChatUnavailable({ status: 500, code: 500 })).toBe(false);
   });
 
-  it('splits a bound login from a bind ticket', () => {
+  it('302 query is token or bindTicket, and bind uses account', () => {
     expect(readWeChatCallback(new URLSearchParams('token=jwt-1'))).toEqual({ kind: 'session', token: 'jwt-1' });
     expect(readWeChatCallback(new URLSearchParams('bindTicket=ticket-1'))).toEqual({ kind: 'bind', bindTicket: 'ticket-1' });
+    expect(readWeChatCallback(new URLSearchParams('accessToken=nope')).kind).toBe('missing');
+    expect(buildPasswordBind('t', ' demo ', 'Demo1234')).toEqual({ bindTicket: 't', account: 'demo', password: 'Demo1234' });
+    expect(buildInviteBind('t', 'inv')).toEqual({ bindTicket: 't', inviteToken: 'inv' });
   });
 
-  it('builds bind bodies and reads settings plus invite links', () => {
-    expect(buildPasswordBind('t', ' demo ', 'secret')).toEqual({
-      bindTicket: 't',
-      username: 'demo',
-      password: 'secret',
+  it('invite role is only USER, HR or MANAGER, and settings use identities', () => {
+    expect(buildInviteRequest('HR', 72)).toEqual({ role: 'HR', expiresInHours: 72 });
+    expect(() => buildInviteRequest('ADMIN' as 'USER', 72)).toThrow('USER、HR 或 MANAGER');
+    expect(readInvite({ inviteToken: 'abc', role: 'USER', expiresAt: '2026-11-13T00:00:00.000Z' })).toEqual({
+      inviteToken: 'abc',
+      role: 'USER',
+      expiresAt: '2026-11-13T00:00:00.000Z',
     });
-    expect(buildInviteBind('t', 'inv')).toEqual({ bindTicket: 't', inviteToken: 'inv' });
-    expect(readWeChatBindings({ mp: { bound: true, nickname: '张三' }, openBound: false })).toEqual({
+    expect(readWeChatBindings({
+      identities: [{ provider: 'MP', nickname: '张三' }, { provider: 'OPEN', nickname: 'zhang' }],
+    })).toEqual({
       mp: { bound: true, nickname: '张三' },
-      open: { bound: false, nickname: undefined },
-    });
-    expect(readInviteLink({ inviteToken: 'abc' }, 'https://zeno.asia')).toEqual({
-      token: 'abc',
-      url: 'https://zeno.asia/join?inviteToken=abc',
+      open: { bound: true, nickname: 'zhang' },
     });
   });
 });

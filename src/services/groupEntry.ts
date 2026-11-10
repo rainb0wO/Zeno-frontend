@@ -6,12 +6,26 @@ export type { GroupInitView };
 
 export const groupEntryApi = {
   init: async (token: string, date: string): Promise<GroupInitView> => {
-    const result = await apiGet<unknown>(endpoints.groupInit, { token, date }, { skipAuthRedirect: true, skipErrorToast: true });
-    return normalizeGroupInit(result.data);
+    const result = await apiGet<{
+      factory: { id: string; name: string };
+      date: string;
+      editable: boolean;
+      groups: Array<{ id: string; name: string; employees: Array<{ id: string; employeeId: string; name: string }> }>;
+      records: Array<{ employeeId: string; groupId: string; quantity: number; remark: string }>;
+    }>(endpoints.groupInit, { token, date }, { skipAuthRedirect: true, skipErrorToast: true });
+    return normalizeGroupInit(result);
   },
 
-  save: async (input: { token: string; date: string; records: Array<{ employeeId: string; quantity: number }> }) => {
-    const result = await apiPost<unknown>(endpoints.groupSave, buildGroupSavePayload(input), { skipAuthRedirect: true, skipErrorToast: true });
+  save: async (input: {
+    token: string;
+    date: string;
+    groupId: string;
+    records: Array<{ employeeId: string; quantity: number; remark?: string }>;
+  }) => {
+    const result = await apiPost(endpoints.groupSave, buildGroupSavePayload(input), {
+      skipAuthRedirect: true,
+      skipErrorToast: true,
+    });
     return result.message;
   },
 };

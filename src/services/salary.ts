@@ -1,18 +1,32 @@
-import { readPiecePay, formatSalaryMonth } from '../domain/salary';
+import { formatSalaryMonth, readPiecePay } from '../domain/salary';
 import { apiPost } from './http';
 import { endpoints } from './endpoints';
 
-export interface SalaryCalculationResult {
-  piecePay: number | null;
-  raw: unknown;
+export interface SalaryCalculation {
+  employeeId: string;
+  employeeName: string;
+  month: string;
+  quantity: number;
+  basicSalary: number;
+  piecePay: number;
+  overtimePay: number;
+  bonus: number;
+  deduction: number;
+  totalSalary: number;
+  salaryRecordId: string;
 }
 
 export const salaryApi = {
-  calculate: async (employeeId: string, month: string): Promise<SalaryCalculationResult & { message: string }> => {
-    const result = await apiPost<unknown>(endpoints.salaryCalculate, {
+  calculate: async (employeeId: string, month: string) => {
+    const result = await apiPost<{ salaryCalculation: SalaryCalculation }>(endpoints.salaryCalculate, {
       employeeId,
       month: formatSalaryMonth(month),
     });
-    return { message: result.message, piecePay: readPiecePay(result.data), raw: result.data };
+    if (!result.salaryCalculation) throw new Error('响应缺少 salaryCalculation');
+    return {
+      message: result.message,
+      calculation: result.salaryCalculation,
+      piecePay: readPiecePay(result),
+    };
   },
 };

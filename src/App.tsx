@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import './App.css';
@@ -21,11 +22,28 @@ import WeChatBind from './pages/WeChatBind';
 import JoinFactory from './pages/JoinFactory';
 import PersonalSettings from './pages/PersonalSettings';
 
+function WeChatLanding() {
+  const [params] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const token = params.get('token');
+  const bindTicket = params.get('bindTicket');
+
+  useEffect(() => {
+    if (location.pathname === '/auth/wechat/callback') return;
+    if (!token && !bindTicket) return;
+    navigate({ pathname: '/auth/wechat/callback', search: params.toString() }, { replace: true });
+  }, [bindTicket, location.pathname, navigate, params, token]);
+
+  return null;
+}
+
 function App() {
   return (
     <ConfigProvider locale={zhCN}>
       <AntdApp>
         <Router>
+          <WeChatLanding />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

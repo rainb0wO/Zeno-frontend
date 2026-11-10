@@ -2,15 +2,20 @@ import { ApiError } from '../domain/apiEnvelope';
 import {
   WECHAT_INVITE_KEY,
   WECHAT_RETURN_KEY,
+  WECHAT_RETURN_PATH,
   buildInviteBind,
+  buildInviteRequest,
+  buildJoinLink,
   buildPasswordBind,
-  isWeChatNotConfigured,
-  readAuthorizeOutcome,
-  readInviteLink,
+  isWeChatUnavailable,
+  readAuthorizeUrl,
+  readInvite,
   readWeChatBindings,
   wechatAuthorizePlan,
+  type InviteRole,
   type WeChatBindings,
   type WeChatChannel,
+  type WeChatIdentity,
 } from '../domain/wechat';
 import { apiDelete, apiGet, apiPost } from './http';
 import { endpoints } from './endpoints';
@@ -27,8 +32,10 @@ const authorizePath: Record<WeChatChannel, string> = {
   open: endpoints.wechatOpenAuthorize,
 };
 
-async function requestAuthorize(channel: WeChatChannel, scope: string, forCurrentUser: boolean) {
-  return apiGet<unknown>(authorizePath[channel], { scope }, {
+async function requestAuthorize(channel: WeChatChannel, scope: string | undefined, forCurrentUser: boolean) {
+  const params: { returnTo: string; scope?: string } = { returnTo: WECHAT_RETURN_PATH };
+  if (scope) params.scope = scope;
+  return apiGet<{ url: string; scope: string }>(authorizePath[channel], params, {
     skipErrorToast: true,
     skipAuthRedirect: !forCurrentUser,
   });
@@ -38,11 +45,10 @@ export async function prepareWeChatLogin(userAgent = navigator.userAgent): Promi
   const plan = wechatAuthorizePlan(userAgent);
   try {
     const result = await requestAuthorize(plan.channel, plan.scope, false);
-    const outcome = readAuthorizeOutcome(result.data, result.message);
-    return { enabled: outcome.configured && Boolean(outcome.url), url: outcome.url, channel: plan.channel };
+    const url = readAuthorizeUrl(result);
+    return { enabled: Boolean(url), url, channel: plan.channel };
   } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    if (isWeChatNotConfigured(message) || error instanceof ApiError) {
+    if (error instanceof ApiError && isWeChatUnavailable(error)) {
       return { enabled: false, url: null, channel: plan.channel };
     }
     return { enabled: false, url: null, channel: plan.channel };
@@ -75,44 +81,49 @@ export function redirectToWeChat(url: string) {
   window.location.assign(url);
 }
 
-/** 已登录时带 Bearer 调用 authorize，授权完成后由后端绑定到当前用户。 */
+/** 已登录时带 Bearer。回调把微信绑到当前用户，并 302 回 returnTo。 */
 export async function startWeChatBind(channel: WeChatChannel) {
-  const scope = channel === 'mp' ? 'snsapi_userinfo' : 'snsapi_login';
+  const scope = channel === 'mp' ? 'snsapi_userinfo' : undefined;
   const result = await requestAuthorize(channel, scope, true);
-  const outcome = readAuthorizeOutcome(result.data, result.message);
-  if (!outcome.configured || !outcome.url) {
-    throw new ApiError(result.message || '微信登录未配置', -1);
-  }
+  const url = readAuthorizeUrl(result);
+  if (!url) throw new ApiError('微信登录未配置', result.code === 0 ? -1 : result.code);
   rememberWeChatReturn('/personal-settings');
-  redirectToWeChat(outcome.url);
+  redirectToWeChat(url);
 }
 
 export async function bindWeChatAccount(input: {
   bindTicket: string;
-  username?: string;
+  account?: string;
   password?: string;
   inviteToken?: string;
 }): Promise<AuthSession & { message: string }> {
   const body = input.inviteToken
     ? buildInviteBind(input.bindTicket, input.inviteToken)
-    : buildPasswordBind(input.bindTicket, input.username || '', input.password || '');
-  const result = await apiPost<unknown>(endpoints.wechatBind, body, { skipErrorToast: true, skipAuthRedirect: true });
-  return { message: result.message, ...readSession(result.data) };
+    : buildPasswordBind(input.bindTicket, input.account || '', input.password || '');
+  const result = await apiPost<{ token: string; user: AuthSession['user'] }>(endpoints.wechatBind, body, {
+    skipErrorToast: true,
+    skipAuthRedirect: true,
+  });
+  return { message: result.message, ...readSession(result) };
 }
 
 export const wechatSettingsApi = {
   get: async (): Promise<WeChatBindings> => {
-    const result = await apiGet<unknown>(endpoints.wechatSettings);
-    return readWeChatBindings(result.data);
+    const result = await apiGet<{ identities: WeChatIdentity[] }>(endpoints.wechatSettings);
+    return readWeChatBindings(result);
   },
   unbind: async (channel: WeChatChannel) => {
     const path = channel === 'mp' ? endpoints.wechatUnbindMp : endpoints.wechatUnbindOpen;
-    const result = await apiDelete<unknown>(path);
+    const result = await apiDelete(path);
     return result.message;
   },
 };
 
-export async function createFactoryInvite(factoryId: string, origin: string) {
-  const result = await apiPost<unknown>(endpoints.factoryInvites(factoryId), {});
-  return { message: result.message, ...readInviteLink(result.data, origin) };
+export async function createFactoryInvite(factoryId: string, role: InviteRole, expiresInHours: number, origin: string) {
+  const result = await apiPost<{ inviteToken: string; role: InviteRole; expiresAt: string }>(
+    endpoints.factoryInvites(factoryId),
+    buildInviteRequest(role, expiresInHours),
+  );
+  const invite = readInvite(result);
+  return { ...invite, url: buildJoinLink(origin, invite.inviteToken) };
 }

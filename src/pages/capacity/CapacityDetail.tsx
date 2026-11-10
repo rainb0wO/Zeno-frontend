@@ -13,7 +13,7 @@ const CapacityDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const factory = useFactoryStore((state) => state.currentFactory);
-  const { canEdit } = useAccess();
+  const { canWriteCore } = useAccess();
   const [generateForm] = Form.useForm<{ clothingType: string; craftType: string; material: string }>();
   const [processForm] = Form.useForm<ProcessStep>();
   const [pieceForm] = Form.useForm<{ processId: string; employeeId: string; quantity: number }>();
@@ -30,7 +30,7 @@ const CapacityDetail = () => {
 
   const factoryId = factory?.id;
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id || !factoryId) return;
     setLoading(true);
     setError('');
     try {
@@ -38,7 +38,7 @@ const CapacityDetail = () => {
         capacityApi.get(id),
         processApi.listByPlan(id),
         pieceWorkApi.list(id),
-        personnelApi.list(factoryId),
+        personnelApi.list().then((page) => page.employees),
       ]);
       setPlan(planItem);
       setProcesses(processRows);
@@ -58,13 +58,13 @@ const CapacityDetail = () => {
   const generate = async () => {
     const values = await generateForm.validateFields();
     try {
-      const generated = await processApi.generate({ ...values, planId: id });
-      if (!generated.length) {
+      const generated = await processApi.generate(values);
+      if (!generated.processes.length) {
         message.warning('没有生成工序');
         return;
       }
-      setDrafts(generated);
-      message.success(`已生成 ${generated.length} 道工序，确认后保存`);
+      setDrafts(generated.processes);
+      message.success(generated.matched ? '已匹配工序模板，确认后保存' : `已生成 ${generated.processes.length} 道工序，确认后保存`);
     } catch (err) {
       message.error(readErrorMessage(err, '生成工序失败'));
     }
@@ -99,7 +99,8 @@ const CapacityDetail = () => {
     if (!id) return;
     const values = await pieceForm.validateFields();
     try {
-      message.success(await pieceWorkApi.create({ planId: id, ...values }));
+      const created = await pieceWorkApi.create({ planId: id, ...values });
+      message.success(created.message);
       setPieceOpen(false);
       await load();
     } catch (err) {
@@ -129,7 +130,7 @@ const CapacityDetail = () => {
       <Card
         title="工序"
         loading={loading}
-        extra={canEdit && <Button onClick={() => { generateForm.setFieldsValue({ clothingType: plan?.clothingType || '', craftType: plan?.craftType || '', material: plan?.material || '' }); setDrafts([]); setGenerateOpen(true); }}>生成工序</Button>}
+        extra={canWriteCore && <Button onClick={() => { generateForm.setFieldsValue({ clothingType: plan?.clothingType || '', craftType: plan?.craftType || '', material: plan?.material || '' }); setDrafts([]); setGenerateOpen(true); }}>生成工序</Button>}
         style={{ marginBottom: 16 }}
       >
         <Table
@@ -139,11 +140,10 @@ const CapacityDetail = () => {
           pagination={false}
           columns={[
             { title: '名称', dataIndex: 'name' },
-            { title: '设备', dataIndex: 'equipment', render: (value) => value || '-' },
-            { title: '标准工时', dataIndex: 'standardTime', render: (value) => value ?? '-' },
+            { title: '说明', dataIndex: 'description', render: (value) => value || '-' },
             {
               title: '操作',
-              render: (_, row) => canEdit && <Button size="small" onClick={() => { setEditing(row); processForm.setFieldsValue(row); }}>编辑</Button>,
+              render: (_, row) => canWriteCore && <Button size="small" onClick={() => { setEditing(row); processForm.setFieldsValue({ name: row.name, description: row.description }); }}>编辑</Button>,
             },
           ]}
         />
@@ -151,7 +151,7 @@ const CapacityDetail = () => {
 
       <Card
         title="计件"
-        extra={canEdit && <Button onClick={() => { pieceForm.resetFields(); setPieceOpen(true); }} disabled={!processes.length}>登记计件</Button>}
+        extra={canWriteCore && <Button onClick={() => { pieceForm.resetFields(); setPieceOpen(true); }} disabled={!processes.length}>登记计件</Button>}
       >
         <Table
           rowKey="id"
@@ -185,7 +185,7 @@ const CapacityDetail = () => {
             dataSource={drafts}
             columns={[
               { title: '工序', dataIndex: 'name' },
-              { title: '设备', dataIndex: 'equipment', render: (value) => value || '-' },
+              { title: '说明', dataIndex: 'description', render: (value) => value || '-' },
             ]}
           />
         )}
@@ -194,8 +194,6 @@ const CapacityDetail = () => {
       <Modal title="编辑工序" open={!!editing} onCancel={() => setEditing(null)} onOk={saveProcess} okText="保存" cancelText="取消">
         <Form form={processForm} layout="vertical">
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}><Input /></Form.Item>
-          <Form.Item name="equipment" label="设备"><Input /></Form.Item>
-          <Form.Item name="standardTime" label="标准工时（分钟）"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="description" label="说明"><Input.TextArea rows={3} /></Form.Item>
         </Form>
       </Modal>

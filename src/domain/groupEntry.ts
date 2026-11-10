@@ -1,10 +1,13 @@
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface GroupEmployeeRow {
+  /** 员工主键。保存时写入 records.employeeId。 */
   id: string;
+  /** 工号，只展示。 */
+  staffNo: string;
   name: string;
-  employeeNo?: string;
   quantity: number | null;
+  remark: string;
 }
 
 export interface GroupSection {
@@ -15,80 +18,74 @@ export interface GroupSection {
 
 export interface GroupInitView {
   factoryName: string;
+  date: string;
   editable: boolean;
   groups: GroupSection[];
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+interface InitEmployee {
+  id?: string;
+  employeeId?: string;
+  name?: string;
 }
 
-function readEmployee(value: unknown): GroupEmployeeRow | null {
-  const row = asRecord(value);
-  const id = row.id;
-  if (typeof id !== 'string' || !id) return null;
-  const quantity = row.quantity ?? row.output ?? row.actualQty;
-  return {
-    id,
-    name: typeof row.name === 'string' && row.name ? row.name : '未命名员工',
-    employeeNo: typeof row.employeeNo === 'string' ? row.employeeNo : undefined,
-    quantity: typeof quantity === 'number' && Number.isFinite(quantity) ? quantity : null,
-  };
+interface InitRecord {
+  employeeId?: string;
+  groupId?: string;
+  quantity?: number;
+  remark?: string;
 }
 
-function readGroup(value: unknown, index: number): GroupSection | null {
-  const row = asRecord(value);
-  const employees = Array.isArray(row.employees)
-    ? row.employees.map(readEmployee).filter((item): item is GroupEmployeeRow => item !== null)
-    : [];
-  if (!employees.length && typeof row.id !== 'string') return null;
-  return {
-    id: typeof row.id === 'string' && row.id ? row.id : `group-${index}`,
-    name: typeof row.name === 'string' && row.name ? row.name : '本组',
-    employees,
-  };
-}
-
-export function normalizeGroupInit(data: unknown): GroupInitView {
-  const body = asRecord(data);
-  const factory = asRecord(body.factory);
-  const factoryName = typeof body.factoryName === 'string'
-    ? body.factoryName
-    : (typeof factory.name === 'string' ? factory.name : '厂区');
-  const editable = body.editable !== false;
-
-  if (Array.isArray(body.groups)) {
-    const groups = body.groups
-      .map((group, index) => readGroup(group, index))
-      .filter((group): group is GroupSection => group !== null && group.employees.length > 0);
-    return { factoryName, editable, groups };
+export function normalizeGroupInit(body: {
+  factory?: { name?: string };
+  date?: string;
+  editable?: boolean;
+  groups?: Array<{ id?: string; name?: string; employees?: InitEmployee[] }>;
+  records?: InitRecord[];
+}): GroupInitView {
+  if (!Array.isArray(body.groups)) {
+    throw new Error('响应缺少 groups');
   }
-
-  const employees = Array.isArray(body.employees)
-    ? body.employees.map(readEmployee).filter((item): item is GroupEmployeeRow => item !== null)
-    : [];
+  const records = Array.isArray(body.records) ? body.records : [];
   return {
-    factoryName,
-    editable,
-    groups: employees.length ? [{ id: 'default', name: '本组', employees }] : [],
+    factoryName: body.factory?.name || '厂区',
+    date: body.date || '',
+    editable: body.editable === true,
+    groups: body.groups.map((group) => ({
+      id: group.id || '',
+      name: group.name || '小组',
+      employees: (group.employees || []).filter((employee) => employee.id).map((employee) => {
+        const saved = records.find((record) => record.employeeId === employee.id && record.groupId === group.id)
+          || records.find((record) => record.employeeId === employee.id);
+        return {
+          id: employee.id as string,
+          staffNo: employee.employeeId || '',
+          name: employee.name || '未命名员工',
+          quantity: typeof saved?.quantity === 'number' ? saved.quantity : null,
+          remark: saved?.remark || '',
+        };
+      }),
+    })),
   };
 }
 
 export function buildGroupSavePayload(input: {
   token: string;
   date: string;
-  records: Array<{ employeeId: string; quantity: number }>;
+  groupId: string;
+  records: Array<{ employeeId: string; quantity: number; remark?: string }>;
 }) {
   const date = input.date.trim();
-  if (!DAY.test(date)) {
-    throw new Error('日期格式应为 YYYY-MM-DD');
-  }
+  if (!DAY.test(date)) throw new Error('日期格式应为 YYYY-MM-DD');
+  if (!input.groupId) throw new Error('缺少 groupId');
   return {
     token: input.token,
     date,
+    groupId: input.groupId,
     records: input.records.map((record) => ({
       employeeId: record.employeeId,
       quantity: record.quantity,
+      remark: record.remark ?? '',
     })),
   };
 }
@@ -97,12 +94,4 @@ export function buildGroupEntryLink(origin: string, token: string): string {
   const url = new URL('/h5/group-capacity-entry', origin);
   url.searchParams.set('token', token);
   return url.toString();
-}
-
-export function readRotatedToken(data: unknown): { token: string; url?: string } {
-  const body = asRecord(data);
-  const tokenValue = body.token ?? body.groupEntryToken;
-  const token = typeof tokenValue === 'string' ? tokenValue : '';
-  const url = typeof body.url === 'string' ? body.url : undefined;
-  return { token, url };
 }

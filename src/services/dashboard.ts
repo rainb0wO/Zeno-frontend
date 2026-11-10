@@ -5,8 +5,8 @@ import { endpoints } from './endpoints';
 export type { DashboardOverview };
 
 export const dashboardApi = {
-  overview: async (factoryId?: string) => {
-    const result = await apiGet<unknown>(endpoints.dashboard, factoryId ? { factoryId } : undefined);
-    return readDashboard(result.data);
+  overview: async (range?: { startDate?: string; endDate?: string }) => {
+    const result = await apiGet<DashboardOverview>(endpoints.dashboard, range);
+    return readDashboard(result);
   },
 };

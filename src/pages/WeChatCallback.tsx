@@ -14,7 +14,7 @@ const WeChatCallback = () => {
   const query = params.toString();
   const result = readWeChatCallback(params);
   const [sessionError, setSessionError] = useState('');
-  const error = result.kind === 'error' ? result.message : sessionError;
+  const error = result.kind === 'missing' ? '微信没有返回 token 或 bindTicket' : sessionError;
 
   useEffect(() => {
     const current = readWeChatCallback(new URLSearchParams(query));

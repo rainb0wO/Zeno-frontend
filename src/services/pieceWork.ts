@@ -1,4 +1,4 @@
-import { readNamedList } from '../domain/apiEnvelope';
+import { requireList } from '../domain/apiEnvelope';
 import { apiGet, apiPost } from './http';
 import { endpoints } from './endpoints';
 
@@ -17,17 +17,19 @@ export interface PieceWorkInput {
   processId: string;
   employeeId: string;
   quantity: number;
+  completedAt?: string;
   remark?: string;
 }
 
 export const pieceWorkApi = {
   list: async (planId: string) => {
-    const result = await apiGet<unknown>(endpoints.pieceWorks, { planId });
-    return readNamedList<PieceWork>(result.data, 'pieceWorks');
+    const result = await apiGet<{ pieceWorks: PieceWork[] }>(endpoints.planPieceWorks(planId));
+    return requireList<PieceWork>(result, 'pieceWorks');
   },
 
   create: async (input: PieceWorkInput) => {
-    const result = await apiPost<unknown>(endpoints.pieceWorks, input);
-    return result.message;
+    const result = await apiPost<{ pieceWork: PieceWork }>(endpoints.pieceWorks, input);
+    if (!result.pieceWork) throw new Error('响应缺少 pieceWork');
+    return { message: result.message, pieceWork: result.pieceWork };
   },
 };

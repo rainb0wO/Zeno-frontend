@@ -3,6 +3,7 @@ import { Alert, Button, Card, Form, Input, message } from 'antd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { readErrorMessage } from '../domain/apiEnvelope';
+import { BIND_TICKET_SECONDS } from '../domain/wechat';
 import { bindWeChatAccount, clearInviteToken, readInviteToken } from '../services/wechatAuth';
 import { useUserStore } from '../stores/userStore';
 
@@ -36,13 +37,13 @@ const WeChatBind = () => {
     }
   };
 
-  const bindAccount = async (values: { username: string; password: string }) => {
+  const bindAccount = async (values: { account: string; password: string }) => {
     setBinding(true);
     setError('');
     try {
       finish(await bindWeChatAccount({
         bindTicket,
-        username: values.username,
+        account: values.account,
         password: values.password,
       }));
     } catch (err) {
@@ -55,7 +56,7 @@ const WeChatBind = () => {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5', padding: 16 }}>
       <Card title="绑定微信" style={{ width: 420, maxWidth: '100%' }}>
-        <p style={{ color: '#666' }}>这个微信还没有绑定账号。凭证 10 分钟内有效。</p>
+        <p style={{ color: '#666' }}>这个微信还没有绑定账号。绑定凭证 {BIND_TICKET_SECONDS / 60} 分钟内有效，且只能使用一次。</p>
         {!bindTicket && <Alert title="缺少绑定凭证，请重新从微信登录" type="error" showIcon style={{ marginBottom: 16 }} />}
         {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
         {inviteToken && (
@@ -64,7 +65,7 @@ const WeChatBind = () => {
           </Button>
         )}
         <Form layout="vertical" onFinish={bindAccount} requiredMark={false}>
-          <Form.Item name="username" label="已有账号" rules={[{ required: true, message: '请输入用户名或手机号' }]}>
+          <Form.Item name="account" label="已有账号" rules={[{ required: true, message: '请输入用户名或手机号' }]}>
             <Input prefix={<UserOutlined />} placeholder="用户名或手机号" size="large" />
           </Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>

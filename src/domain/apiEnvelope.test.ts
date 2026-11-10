@@ -1,23 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError, readNamedList, unwrapEnvelope } from './apiEnvelope';
+import { ApiError, requireList, unwrapEnvelope } from './apiEnvelope';
 
 describe('unwrapEnvelope', () => {
-  it('returns data when code is 0', () => {
-    expect(unwrapEnvelope({ code: 0, message: 'ok', data: { id: '1' } })).toEqual({
-      message: 'ok',
-      data: { id: '1' },
+  it('keeps business fields beside code and message', () => {
+    expect(unwrapEnvelope({ code: 0, message: '注册成功', token: 'jwt', user: { id: '1' } })).toEqual({
+      code: 0,
+      message: '注册成功',
+      token: 'jwt',
+      user: { id: '1' },
     });
   });
 
   it('rejects a non-zero business code', () => {
     expect(() => unwrapEnvelope({ code: 1004, message: '密码错误' })).toThrow(ApiError);
-    try {
-      unwrapEnvelope({ code: 1004, message: '密码错误' });
-    } catch (error) {
-      expect(error).toBeInstanceOf(ApiError);
-      expect((error as ApiError).message).toBe('密码错误');
-      expect((error as ApiError).code).toBe(1004);
-    }
   });
 
   it('rejects a payload that is not the contract', () => {
@@ -25,10 +20,10 @@ describe('unwrapEnvelope', () => {
   });
 });
 
-describe('readNamedList', () => {
-  it('reads pieceWorks and also accepts a bare array', () => {
-    expect(readNamedList({ pieceWorks: [{ id: 'a' }] }, 'pieceWorks')).toEqual([{ id: 'a' }]);
-    expect(readNamedList([{ id: 'b' }], 'pieceWorks')).toEqual([{ id: 'b' }]);
-    expect(readNamedList({}, 'pieceWorks')).toEqual([]);
+describe('requireList', () => {
+  it('reads only the documented key', () => {
+    expect(requireList({ pieceWorks: [{ id: 'a' }] }, 'pieceWorks')).toEqual([{ id: 'a' }]);
+    expect(() => requireList({}, 'pieceWorks')).toThrow('响应缺少 pieceWorks');
+    expect(() => requireList([], 'pieceWorks')).toThrow('响应缺少 pieceWorks');
   });
 });

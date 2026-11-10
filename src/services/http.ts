@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
 import { message } from 'antd';
-import { ApiError, unwrapEnvelope, type ApiSuccess } from '../domain/apiEnvelope';
+import { ApiError, unwrapEnvelope, type ApiEnvelope } from '../domain/apiEnvelope';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -64,7 +64,7 @@ client.interceptors.response.use(
   },
 );
 
-async function send<T>(options: RequestOptions): Promise<ApiSuccess<T>> {
+async function send<T extends object>(options: RequestOptions): Promise<ApiEnvelope<T>> {
   try {
     const response = await client.request(options);
     return unwrapEnvelope<T>(response.data);
@@ -79,18 +79,18 @@ async function send<T>(options: RequestOptions): Promise<ApiSuccess<T>> {
   }
 }
 
-export function apiGet<T>(url: string, params?: object, options?: RequestOptions) {
+export function apiGet<T extends object>(url: string, params?: object, options?: RequestOptions) {
   return send<T>({ ...options, url, method: 'GET', params });
 }
 
-export function apiPost<T>(url: string, data?: unknown, options?: RequestOptions) {
+export function apiPost<T extends object>(url: string, data?: unknown, options?: RequestOptions) {
   return send<T>({ ...options, url, method: 'POST', data });
 }
 
-export function apiPut<T>(url: string, data?: unknown, options?: RequestOptions) {
+export function apiPut<T extends object>(url: string, data?: unknown, options?: RequestOptions) {
   return send<T>({ ...options, url, method: 'PUT', data });
 }
 
-export function apiDelete<T>(url: string, options?: RequestOptions) {
+export function apiDelete<T extends object>(url: string, options?: RequestOptions) {
   return send<T>({ ...options, url, method: 'DELETE' });
 }

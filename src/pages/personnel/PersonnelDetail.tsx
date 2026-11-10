@@ -33,10 +33,10 @@ const PersonnelDetail = () => {
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="姓名">{employee.name}</Descriptions.Item>
             <Descriptions.Item label="主键">{employee.id}</Descriptions.Item>
-            <Descriptions.Item label="工号">{employee.employeeNo || '-'}</Descriptions.Item>
-            <Descriptions.Item label="手机">{employee.phone || '-'}</Descriptions.Item>
-            <Descriptions.Item label="部门">{employee.departmentName || '-'}</Descriptions.Item>
+            <Descriptions.Item label="工号">{employee.employeeId || '-'}</Descriptions.Item>
             <Descriptions.Item label="岗位">{employee.position || '-'}</Descriptions.Item>
+            <Descriptions.Item label="薪资类型">{employee.salaryType || '-'}</Descriptions.Item>
+            <Descriptions.Item label="计件单价">{employee.pieceRate ?? '-'}</Descriptions.Item>
           </Descriptions>
         )}
       </Spin>

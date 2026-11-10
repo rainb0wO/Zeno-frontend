@@ -25,10 +25,12 @@ const Register = () => {
     setErrorMsg('');
     try {
       const session = await authApi.register({
-        factoryName: values.factoryName.trim(),
         username: values.username.trim(),
         password: values.password,
+        confirmPassword: values.confirmPassword,
+        factoryName: values.factoryName.trim(),
         phone: values.phone?.trim() || undefined,
+        managementMode: 'standard',
       });
       setToken(session.token);
       setUser(session.user);
@@ -63,8 +65,15 @@ const Register = () => {
           >
             <Input prefix={<PhoneOutlined />} placeholder="选填" size="large" />
           </Form.Item>
-          <Form.Item name="password" label="密码" rules={[{ required: true, min: 6, message: '密码至少 6 位' }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="至少 6 位" autoComplete="new-password" size="large" />
+          <Form.Item
+            name="password"
+            label="密码"
+            rules={[
+              { required: true, min: 8, message: '密码至少 8 位' },
+              { pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: '密码需要同时包含字母和数字' },
+            ]}
+          >
+            <Input.Password prefix={<LockOutlined />} placeholder="至少 8 位，含字母和数字" autoComplete="new-password" size="large" />
           </Form.Item>
           <Form.Item
             name="confirmPassword"

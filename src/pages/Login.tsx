@@ -9,7 +9,7 @@ import { prepareWeChatLogin, redirectToWeChat } from '../services/wechatAuth';
 import { useUserStore } from '../stores/userStore';
 
 interface LoginForm {
-  username: string;
+  account: string;
   password: string;
 }
 
@@ -39,7 +39,7 @@ const Login = () => {
     setErrorMsg('');
     try {
       const session = await authApi.login({
-        username: values.username.trim(),
+        account: values.account.trim(),
         password: values.password,
       });
       setToken(session.token);
@@ -58,7 +58,7 @@ const Login = () => {
       <Card title="Zeno 生产辅助管理平台" style={{ width: 380, maxWidth: '100%' }}>
         <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
           <Form.Item
-            name="username"
+            name="account"
             label="用户名或手机号"
             rules={[{ required: true, message: '请输入用户名或手机号' }]}
           >
