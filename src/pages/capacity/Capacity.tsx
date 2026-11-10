@@ -90,8 +90,8 @@ const CapacityPage = () => {
         columns={[
           { title: '款式 / 产品', dataIndex: 'productName' },
           { title: '目标产量', dataIndex: 'targetQty' },
-          { title: '开始', dataIndex: 'startDate' },
-          { title: '结束', dataIndex: 'endDate' },
+          { title: '开始', dataIndex: 'startDate', render: (value: string) => value?.slice(0, 10) },
+          { title: '结束', dataIndex: 'endDate', render: (value: string) => value?.slice(0, 10) },
           { title: '状态', dataIndex: 'status', render: (value) => planStatusLabel(value) },
           {
             title: '操作',

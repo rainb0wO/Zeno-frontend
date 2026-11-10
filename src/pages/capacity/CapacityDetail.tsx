@@ -121,7 +121,7 @@ const CapacityDetail = () => {
       {plan && (
         <Descriptions bordered size="small" column={1} style={{ marginBottom: 16 }}>
           <Descriptions.Item label="目标产量">{plan.targetQty}</Descriptions.Item>
-          <Descriptions.Item label="日期">{plan.startDate} 至 {plan.endDate}</Descriptions.Item>
+          <Descriptions.Item label="日期">{plan.startDate?.slice(0, 10)} 至 {plan.endDate?.slice(0, 10)}</Descriptions.Item>
           <Descriptions.Item label="状态">{planStatusLabel(plan.status)}</Descriptions.Item>
           <Descriptions.Item label="款式">{[plan.clothingType, plan.craftType, plan.material].filter(Boolean).join(' / ') || '-'}</Descriptions.Item>
         </Descriptions>
