@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, Tabs, Input, Space, Checkbox, Alert, Spin, Empty, Button, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { DndProvider, useDrag } from 'react-dnd';
@@ -27,9 +27,12 @@ const MultiSelectDragContainer: React.FC<{
     }),
   });
 
+  const dragRef = useRef<HTMLDivElement>(null);
+  drag(dragRef);
+
   return (
     <div
-      ref={drag}
+      ref={dragRef}
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: 'move',
@@ -40,7 +43,7 @@ const MultiSelectDragContainer: React.FC<{
   );
 };
 
-const EmployeePool: React.FC<EmployeePoolProps> = ({ onAssignEmployees }) => {
+const EmployeePool: React.FC<EmployeePoolProps> = () => {
   const { user } = useUserStore();
   const { currentFactory } = useFactoryStore();
   const [employees, setEmployees] = useState<Employee[]>([]);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Space, DatePicker, Statistic, Row, Col, message, Spin, Empty, Tag, Descriptions, Pagination } from 'antd';
 import { PlusOutlined, EditOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
-import dayjs, { Dayjs } from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import attendanceApi from '../../services/attendance';
 import { useUserStore } from '../../stores/userStore';
 
@@ -56,58 +56,6 @@ const Attendance = () => {
     return statusCount;
   }, [records]);
 
-  const columns = [
-    { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId' },
-    { title: '姓名', dataIndex: 'name', key: 'name' },
-    { title: '联系电话', dataIndex: 'phone', key: 'phone' },
-    { title: '日期', dataIndex: 'date', key: 'date' },
-    { title: '上班时间', dataIndex: 'checkInTime', key: 'checkInTime', render: (t: string|null) => t || '-' },
-    { title: '下班时间', dataIndex: 'checkOutTime', key: 'checkOutTime', render: (t: string|null) => t || '-' },
-    { title: '工作时长', dataIndex: 'workHours', key: 'workHours', render: (h: number) => `${h || 0}小时` },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (s: string) => {
-        switch (s) {
-          case 'PRESENT':
-            return (
-              <Space>
-                <CheckOutlined style={{ color: '#3f8600' }} /> 正常
-              </Space>
-            );
-          case 'LATE':
-            return (
-              <Space>
-                <ClockCircleOutlined style={{ color: '#faad14' }} /> 迟到
-              </Space>
-            );
-          case 'EARLY_LEAVE':
-            return (
-              <Space>
-                <ClockCircleOutlined style={{ color: '#faad14' }} /> 早退
-              </Space>
-            );
-          case 'ABSENT':
-          default:
-            return (
-              <Space>
-                <CloseOutlined style={{ color: '#cf1322' }} /> 缺勤
-              </Space>
-            );
-        }
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: () => (
-        <Button type="link" icon={<EditOutlined />}>
-          编辑
-        </Button>
-      ),
-    },
-  ];
 
   return (
     <div className="page-container">
@@ -204,7 +152,7 @@ const Attendance = () => {
                         <Descriptions
                           column={2}
                           size="small"
-                          styles={{ itemLabel: { width: 56, whiteSpace: 'nowrap' }, itemContent: { minWidth: 0 } }}
+                          styles={{ label: { width: 56, whiteSpace: 'nowrap' }, content: { minWidth: 0 } }}
                         >
                           <Descriptions.Item label="日期" span={2}>{record.date || '-'}</Descriptions.Item>
                           <Descriptions.Item label="上班">{record.clockIn || '-'}</Descriptions.Item>

@@ -8,7 +8,7 @@ import { useReadonly } from '../../contexts/ReadonlyContext';
 const CapacityDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isReadonly, showTip } = useReadonly();
+  const { isReadonly } = useReadonly();
 
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<ProductionPlan | null>(null);

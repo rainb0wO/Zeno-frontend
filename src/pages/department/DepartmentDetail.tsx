@@ -3,7 +3,6 @@ import { Button, Card, Descriptions, Space, Spin, Tag, message, Typography } fro
 import { useNavigate, useParams } from 'react-router-dom';
 import { departmentApi } from '../../services/department';
 import type { Department } from '../../services/department';
-import { useReadonly } from '../../contexts/ReadonlyContext';
 import { useDepartmentStore } from '../../stores/departmentStore';
 import { useFactoryStore } from '../../stores/factoryStore';
 import personnelApi from '../../services/personnel';
@@ -13,7 +12,6 @@ const { Text } = Typography;
 const DepartmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isReadonly } = useReadonly();
   const { departments } = useDepartmentStore();
   const { currentFactory } = useFactoryStore();
 

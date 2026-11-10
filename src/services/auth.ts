@@ -5,7 +5,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: 'ADMIN' | 'MANAGER' | 'USER';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'USER';
   factoryId?: string;
   createdAt: string;
 }

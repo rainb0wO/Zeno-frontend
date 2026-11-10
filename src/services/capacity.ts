@@ -11,6 +11,9 @@ export interface ProductionPlan {
   startDate: string;
   endDate: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
+  priorityLevel?: string;
+  isManualPriority?: boolean;
+  priorityScore?: number;
   createdAt: string;
   updatedAt: string;
 }

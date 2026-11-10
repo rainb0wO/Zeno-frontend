@@ -1,6 +1,6 @@
 import React from 'react';
 import { Table, List, Card, Grid, Space } from 'antd';
-import type { TablePaginationConfig, ColumnsType } from 'antd/es/table';
+import type { ColumnType, ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 export interface ResponsiveDataListProps<T extends object = any> {
@@ -14,27 +14,31 @@ export interface ResponsiveDataListProps<T extends object = any> {
   listStyle?: React.CSSProperties;
 }
 
+function isLeafColumn<T extends object>(column: ColumnsType<T>[number]): column is ColumnType<T> {
+  return !('children' in column);
+}
+
+function cellValue<T extends object>(record: T, column: ColumnType<T>) {
+  const raw = (record as Record<string, unknown>)[column.dataIndex as string];
+  return column.render ? (column.render as (value: unknown, record: T) => React.ReactNode)(raw, record) : raw;
+}
+
 function defaultMobileRender<T extends object>(
   record: T,
   columns: ColumnsType<T>
 ) {
-  if (!columns || columns.length === 0) return null;
-  const primary = columns[0];
+  const leafColumns = (columns || []).filter(isLeafColumn);
+  if (leafColumns.length === 0) return null;
+  const primary = leafColumns[0];
   return (
     <Space direction="vertical" size={4} style={{ width: '100%' }}>
-      <div style={{ fontWeight: 600 }}>
-        {primary.render
-          ? (primary.render as any)((record as any)[primary.dataIndex as keyof T], record)
-          : (record as any)[primary.dataIndex as keyof T]}
-      </div>
-      {columns.slice(1, 4).map((col) => {
-        const key = col.dataIndex as string;
-        const value = col.render
-          ? (col.render as any)((record as any)[key], record)
-          : (record as any)[key];
+      <div style={{ fontWeight: 600 }}>{cellValue(record, primary) as React.ReactNode}</div>
+      {leafColumns.slice(1, 4).map((col, index) => {
+        const key = String(col.dataIndex ?? col.key ?? index);
+        const value = cellValue(record, col);
         return (
           <div key={key} style={{ fontSize: 12, color: '#666' }}>
-            {col.title}: {value}
+            {col.title as React.ReactNode}: {value as React.ReactNode}
           </div>
         );
       })}

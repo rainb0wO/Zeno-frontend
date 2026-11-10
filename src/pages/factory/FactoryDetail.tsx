@@ -37,7 +37,7 @@ const FactoryDetail = () => {
     if (!id) return;
     setGenerating(true);
     try {
-      const res = await capacityApi.generateGroupToken(id);
+      await capacityApi.generateGroupToken(id);
       message.success('链接生成成功');
       fetchDetail(); // 刷新详情以获取最新的 token
     } catch (e: any) {
@@ -85,7 +85,7 @@ const FactoryDetail = () => {
               <Descriptions.Item label="创建时间">{new Date(factory.createdAt).toLocaleString('zh-CN')}</Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">微信群对接</Divider>
+            <Divider titlePlacement="left">微信群对接</Divider>
             
             <Card size="small" title={<span><WechatOutlined style={{ color: '#52c41a', marginRight: 8 }} />产能填报入口</span>}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

@@ -6,8 +6,9 @@ WORKDIR /app
 # 复制依赖文件
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production
+# 安装全部依赖。Vite 等构建工具在 devDependencies 中，
+# 使用 --only=production / --omit=dev 会导致后续 npm run build 无法执行。
+RUN npm ci --include=dev
 
 # 复制源代码
 COPY . .

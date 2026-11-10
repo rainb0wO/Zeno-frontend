@@ -7,7 +7,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DepartmentTree from '../../components/DepartmentTree';
 import EmployeePool from '../../components/EmployeePool';
-import type { Department } from '../../services/department';
+import type { Department as DepartmentRecord } from '../../services/department';
 import { departmentApi } from '../../services/department';
 import { useDepartmentStore } from '../../stores/departmentStore';
 import { useFactoryStore } from '../../stores/factoryStore';
@@ -24,7 +24,7 @@ const Department: React.FC = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<DepartmentRecord | null>(null);
   const [parentId, setParentId] = useState<string | null>(null);
 
   const isMobileView = !screens.md;
@@ -50,7 +50,7 @@ const Department: React.FC = () => {
         includeDeleted: showDeleted,
       });
 
-      const list: Department[] =
+      const list: DepartmentRecord[] =
         response?.departments?.items ||
         response?.departments ||
         response?.department ||
@@ -63,45 +63,6 @@ const Department: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // 构建树形结构
-  const buildTree = (list: Department[]): Department[] => {
-    const map = new Map<string, Department>();
-    const roots: Department[] = [];
-
-    const normalizeParentId = (v: unknown): string | null => {
-      if (v === null || v === undefined) return null;
-      const s = String(v).trim();
-      if (!s) return null;
-      if (s.toLowerCase() === 'null') return null;
-      if (s === '0') return null;
-      return s;
-    };
-
-    list.forEach((dept) => {
-      map.set(dept.id, { ...dept, children: [] });
-    });
-
-    list.forEach((dept) => {
-      const node = map.get(dept.id)!;
-      const pid = normalizeParentId((dept as any).parentId);
-
-      if (!pid) {
-        roots.push(node);
-        return;
-      }
-
-      const parent = map.get(pid);
-      if (parent) {
-        parent.children = parent.children || [];
-        parent.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    });
-
-    return roots;
   };
 
   useEffect(() => {
@@ -133,7 +94,7 @@ const Department: React.FC = () => {
   };
 
   // 编辑部门
-  const handleEdit = (department: Department) => {
+  const handleEdit = (department: DepartmentRecord) => {
     if (isReadonly) {
       showTip();
       return;
@@ -148,7 +109,7 @@ const Department: React.FC = () => {
   };
 
   // 删除部门
-  const handleDelete = (department: Department) => {
+  const handleDelete = (department: DepartmentRecord) => {
     if (isReadonly) {
       showTip();
       return;
@@ -174,7 +135,7 @@ const Department: React.FC = () => {
   };
 
   // 恢复部门
-  const handleRestore = (department: Department) => {
+  const handleRestore = (department: DepartmentRecord) => {
     if (isReadonly) {
       showTip();
       return;
@@ -198,7 +159,7 @@ const Department: React.FC = () => {
   };
 
   // 永久清除
-  const handleForceDelete = (department: Department) => {
+  const handleForceDelete = (department: DepartmentRecord) => {
     if (isReadonly) {
       showTip();
       return;
