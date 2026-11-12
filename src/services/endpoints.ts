@@ -7,6 +7,7 @@ export const endpoints = {
   wechatMpAuthorize: '/auth/wechat/mp/authorize',
   wechatOpenAuthorize: '/auth/wechat/open/authorize',
   wechatBind: '/auth/wechat/bind',
+  wechatCodeExchange: '/auth/wechat/code-exchange',
   wechatSettings: '/settings/wechat',
   wechatUnbindMp: '/settings/wechat/mp',
   wechatUnbindOpen: '/settings/wechat/open',
