@@ -8,6 +8,8 @@ export interface GroupEmployeeRow {
   name: string;
   quantity: number | null;
   remark: string;
+  /** 今日不上班（init 记录的 absent；勾选后保存时发 absent: true）。 */
+  absent: boolean;
 }
 
 export interface GroupSection {
@@ -34,6 +36,7 @@ interface InitRecord {
   groupId?: string;
   quantity?: number;
   remark?: string;
+  absent?: boolean;
 }
 
 export function normalizeGroupInit(body: {
@@ -63,17 +66,22 @@ export function normalizeGroupInit(body: {
           name: employee.name || '未命名员工',
           quantity: typeof saved?.quantity === 'number' ? saved.quantity : null,
           remark: saved?.remark || '',
+          absent: saved?.absent === true,
         };
       }),
     })),
   };
 }
 
+export type GroupSaveRecord =
+  | { employeeId: string; quantity: number; remark?: string; absent?: false }
+  | { employeeId: string; absent: true };
+
 export function buildGroupSavePayload(input: {
   token: string;
   date: string;
   groupId: string;
-  records: Array<{ employeeId: string; quantity: number; remark?: string }>;
+  records: GroupSaveRecord[];
 }) {
   const date = input.date.trim();
   if (!DAY.test(date)) throw new Error('日期格式应为 YYYY-MM-DD');
@@ -82,11 +90,14 @@ export function buildGroupSavePayload(input: {
     token: input.token,
     date,
     groupId: input.groupId,
-    records: input.records.map((record) => ({
-      employeeId: record.employeeId,
-      quantity: record.quantity,
-      remark: record.remark ?? '',
-    })),
+    records: input.records.map((record) => {
+      if (record.absent === true) return { employeeId: record.employeeId, absent: true as const };
+      return {
+        employeeId: record.employeeId,
+        quantity: record.quantity,
+        remark: record.remark ?? '',
+      };
+    }),
   };
 }
 

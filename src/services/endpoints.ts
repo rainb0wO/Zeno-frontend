@@ -31,4 +31,5 @@ export const endpoints = {
   dashboard: '/dashboard/overview',
   groupInit: '/capacity/group-entry/init',
   groupSave: '/capacity/group-entry/save',
+  assistantChat: '/assistant/chat',
 } as const;

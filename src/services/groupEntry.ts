@@ -1,4 +1,4 @@
-import { buildGroupSavePayload, normalizeGroupInit, type GroupInitView } from '../domain/groupEntry';
+import { buildGroupSavePayload, normalizeGroupInit, type GroupInitView, type GroupSaveRecord } from '../domain/groupEntry';
 import { apiGet, apiPost } from './http';
 import { endpoints } from './endpoints';
 
@@ -11,7 +11,7 @@ export const groupEntryApi = {
       date: string;
       editable: boolean;
       groups: Array<{ id: string; name: string; employees: Array<{ id: string; employeeId: string; name: string }> }>;
-      records: Array<{ employeeId: string; groupId: string; quantity: number; remark: string }>;
+      records: Array<{ employeeId: string; groupId: string; quantity: number; remark: string; absent?: boolean }>;
     }>(endpoints.groupInit, { token, date }, { skipAuthRedirect: true, skipErrorToast: true });
     return normalizeGroupInit(result);
   },
@@ -20,7 +20,7 @@ export const groupEntryApi = {
     token: string;
     date: string;
     groupId: string;
-    records: Array<{ employeeId: string; quantity: number; remark?: string }>;
+    records: GroupSaveRecord[];
   }) => {
     const result = await apiPost(endpoints.groupSave, buildGroupSavePayload(input), {
       skipAuthRedirect: true,

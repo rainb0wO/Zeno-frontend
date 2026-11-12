@@ -49,6 +49,26 @@ export function readAuthorizeUrl(body: { url?: unknown }): string | null {
   return typeof body.url === 'string' && body.url ? body.url : null;
 }
 
+/**
+ * 本地 JWT 是否有效：localStorage 里有，且 exp 未过期。
+ * 没有、解析失败或已过期都算无效（群入口静默授权按此判断要不要跳授权）。
+ * 只读 exp，不校验签名——签名由服务端校验。
+ */
+export function hasValidJwt(token: string | null | undefined): boolean {
+  if (!token) return false;
+  const clean = token.startsWith('Bearer ') ? token.slice(7) : token;
+  const parts = clean.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 export type WeChatCallback = { kind: 'code'; code: string } | { kind: 'missing' };
 
 /** 302 到前端时，查询参数只带一个短期、一次性的 code；JWT / bindTicket 绝不进 URL。 */
