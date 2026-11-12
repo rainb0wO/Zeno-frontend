@@ -8,6 +8,7 @@ import {
   readInvite,
   readWeChatBindings,
   readWeChatCallback,
+  readWeChatCodeExchange,
   wechatAuthorizePlan,
 } from './wechat';
 
@@ -26,12 +27,25 @@ describe('wechat contract', () => {
     expect(isWeChatUnavailable({ status: 500, code: 500 })).toBe(false);
   });
 
-  it('302 query is token or bindTicket, and bind uses account', () => {
-    expect(readWeChatCallback(new URLSearchParams('token=jwt-1'))).toEqual({ kind: 'session', token: 'jwt-1' });
-    expect(readWeChatCallback(new URLSearchParams('bindTicket=ticket-1'))).toEqual({ kind: 'bind', bindTicket: 'ticket-1' });
+  it('302 query 只带一次性 code，旧的 token / bindTicket 参数不再认，bind 用账号', () => {
+    expect(readWeChatCallback(new URLSearchParams('code=abc123'))).toEqual({ kind: 'code', code: 'abc123' });
+    expect(readWeChatCallback(new URLSearchParams('token=jwt-1')).kind).toBe('missing');
+    expect(readWeChatCallback(new URLSearchParams('bindTicket=ticket-1')).kind).toBe('missing');
     expect(readWeChatCallback(new URLSearchParams('accessToken=nope')).kind).toBe('missing');
     expect(buildPasswordBind('t', ' demo ', 'Demo1234')).toEqual({ bindTicket: 't', account: 'demo', password: 'Demo1234' });
     expect(buildInviteBind('t', 'inv')).toEqual({ bindTicket: 't', inviteToken: 'inv' });
+  });
+
+  it('code-exchange 响应：已绑定给 JWT，未绑定给 bindTicket，缺了就报错', () => {
+    expect(
+      readWeChatCodeExchange({ token: 'jwt-1', user: { id: 'u1', username: 'zhangsf', role: 'MANAGER' } }),
+    ).toEqual({ kind: 'session', token: 'jwt-1', user: { id: 'u1', username: 'zhangsf', role: 'MANAGER' } });
+    expect(readWeChatCodeExchange({ bindTicket: 'ticket-1', bindRequired: true })).toEqual({
+      kind: 'bind',
+      bindTicket: 'ticket-1',
+    });
+    expect(() => readWeChatCodeExchange({})).toThrow('token 或 bindTicket');
+    expect(() => readWeChatCodeExchange({ token: 'jwt-1' })).toThrow('token 或 bindTicket');
   });
 
   it('invite role is only USER, HR or MANAGER, and settings use identities', () => {

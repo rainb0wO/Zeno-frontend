@@ -49,18 +49,40 @@ export function readAuthorizeUrl(body: { url?: unknown }): string | null {
   return typeof body.url === 'string' && body.url ? body.url : null;
 }
 
-export type WeChatCallback =
-  | { kind: 'session'; token: string }
-  | { kind: 'bind'; bindTicket: string }
-  | { kind: 'missing' };
+export type WeChatCallback = { kind: 'code'; code: string } | { kind: 'missing' };
 
-/** 302 到前端时，查询参数只有 token 或 bindTicket。 */
+/** 302 到前端时，查询参数只带一个短期、一次性的 code；JWT / bindTicket 绝不进 URL。 */
 export function readWeChatCallback(params: URLSearchParams): WeChatCallback {
-  const token = params.get('token') || '';
-  const bindTicket = params.get('bindTicket') || '';
-  if (token) return { kind: 'session', token };
-  if (bindTicket) return { kind: 'bind', bindTicket };
+  const code = params.get('code') || '';
+  if (code) return { kind: 'code', code };
   return { kind: 'missing' };
+}
+
+export interface WeChatCodeExchangeUser {
+  id: string;
+  username: string;
+  role: string;
+}
+
+export type WeChatCodeExchange =
+  | { kind: 'session'; token: string; user: WeChatCodeExchangeUser }
+  | { kind: 'bind'; bindTicket: string };
+
+/** POST /api/auth/wechat/code-exchange 的响应：已绑定给 JWT，未绑定给 bindTicket。 */
+export function readWeChatCodeExchange(body: {
+  token?: unknown;
+  user?: unknown;
+  bindTicket?: unknown;
+  bindRequired?: unknown;
+}): WeChatCodeExchange {
+  if (typeof body.bindTicket === 'string' && body.bindTicket) {
+    return { kind: 'bind', bindTicket: body.bindTicket };
+  }
+  const user = body.user as WeChatCodeExchangeUser | undefined;
+  if (typeof body.token === 'string' && body.token && user && typeof user.id === 'string') {
+    return { kind: 'session', token: body.token, user };
+  }
+  throw new Error('code 兑换响应缺少 token 或 bindTicket');
 }
 
 export function buildPasswordBind(bindTicket: string, account: string, password: string) {

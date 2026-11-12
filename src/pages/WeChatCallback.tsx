@@ -1,43 +1,55 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Spin } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { readErrorMessage } from '../domain/apiEnvelope';
-import { readWeChatCallback } from '../domain/wechat';
 import { authApi } from '../services/auth';
-import { consumeWeChatReturn } from '../services/wechatAuth';
+import { consumeWeChatReturn, exchangeWeChatCode } from '../services/wechatAuth';
 import { useUserStore } from '../stores/userStore';
+
+/** 兑换成功后立即把一次性 code 从地址栏清掉，避免被转发或记入浏览器历史。 */
+function clearCodeFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('code');
+  window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
 
 const WeChatCallback = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { setToken, setUser } = useUserStore();
-  const query = params.toString();
-  const result = readWeChatCallback(params);
-  const [sessionError, setSessionError] = useState('');
-  const error = result.kind === 'missing' ? '微信没有返回 token 或 bindTicket' : sessionError;
+  const code = params.get('code') || '';
+  const [exchangeError, setExchangeError] = useState('');
+  // code 是一次性的：StrictMode 下 effect 会跑两遍，必须保证只兑换一次。
+  const startedRef = useRef(false);
+  const error = !code ? '微信没有返回登录 code，请重新从微信打开链接' : exchangeError;
 
   useEffect(() => {
-    const current = readWeChatCallback(new URLSearchParams(query));
-    if (current.kind === 'bind') {
-      navigate(`/auth/wechat/bind?bindTicket=${encodeURIComponent(current.bindTicket)}`, { replace: true });
-      return;
-    }
-    if (current.kind !== 'session') return;
+    if (!code || startedRef.current) return;
+    startedRef.current = true;
     let alive = true;
-    setToken(current.token);
-    authApi.me()
-      .then((user) => {
+    exchangeWeChatCode(code)
+      .then((result) => {
         if (!alive) return;
-        setUser(user);
-        navigate(consumeWeChatReturn(), { replace: true });
+        clearCodeFromUrl();
+        if (result.kind === 'bind') {
+          // bindTicket 只走内存传递（路由 state），不放进 URL。
+          navigate('/auth/wechat/bind', { replace: true, state: { bindTicket: result.bindTicket } });
+          return;
+        }
+        setToken(result.token);
+        return authApi.me().then((user) => {
+          if (!alive) return;
+          setUser(user);
+          navigate(consumeWeChatReturn(), { replace: true });
+        });
       })
       .catch((err) => {
-        if (alive) setSessionError(readErrorMessage(err, '微信登录成功，但没有取到用户信息'));
+        if (alive) setExchangeError(readErrorMessage(err, '微信登录 code 已失效，请重新从微信打开链接'));
       });
     return () => {
       alive = false;
     };
-  }, [navigate, query, setToken, setUser]);
+  }, [code, navigate, setToken, setUser]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

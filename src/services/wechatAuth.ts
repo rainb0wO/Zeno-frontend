@@ -11,10 +11,13 @@ import {
   readAuthorizeUrl,
   readInvite,
   readWeChatBindings,
+  readWeChatCodeExchange,
   wechatAuthorizePlan,
   type InviteRole,
   type WeChatBindings,
   type WeChatChannel,
+  type WeChatCodeExchange,
+  type WeChatCodeExchangeUser,
   type WeChatIdentity,
 } from '../domain/wechat';
 import { apiDelete, apiGet, apiPost } from './http';
@@ -89,6 +92,17 @@ export async function startWeChatBind(channel: WeChatChannel) {
   if (!url) throw new ApiError('微信登录未配置', result.code === 0 ? -1 : result.code);
   rememberWeChatReturn('/personal-settings');
   redirectToWeChat(url);
+}
+
+/** 用微信回调带回的一次性 code 换会话：已绑定返回 JWT，未绑定返回 bindTicket。 */
+export async function exchangeWeChatCode(code: string): Promise<WeChatCodeExchange> {
+  const result = await apiPost<{
+    token?: string;
+    user?: WeChatCodeExchangeUser;
+    bindTicket?: string;
+    bindRequired?: boolean;
+  }>(endpoints.wechatCodeExchange, { code }, { skipErrorToast: true, skipAuthRedirect: true });
+  return readWeChatCodeExchange(result);
 }
 
 export async function bindWeChatAccount(input: {
