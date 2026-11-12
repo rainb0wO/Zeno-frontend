@@ -84,6 +84,29 @@ export function redirectToWeChat(url: string) {
   window.location.assign(url);
 }
 
+/**
+ * 群入口静默授权（第二阶段第 3 步，BLUEPRINT §1.1）：
+ * 微信内且无有效 JWT 时，跳 MP snsapi_base 授权，returnTo 回群入口页（只含 token 与 group）。
+ * 微信未配置（authorize 返回 503/5031）时返回 'unavailable'，调用方退回匿名模式并提示，
+ * 不报错退出。其他异常同样退回匿名（静默授权失败不应挡住填报）。
+ */
+export async function startGroupSilentAuth(returnTo: string): Promise<'redirected' | 'unavailable'> {
+  try {
+    const result = await apiGet<{ url: string; scope: string }>(
+      endpoints.wechatMpAuthorize,
+      { scope: 'snsapi_base', returnTo },
+      { skipErrorToast: true, skipAuthRedirect: true },
+    );
+    const url = readAuthorizeUrl(result);
+    if (!url) return 'unavailable';
+    redirectToWeChat(url);
+    return 'redirected';
+  } catch (error) {
+    if (error instanceof ApiError && isWeChatUnavailable(error)) return 'unavailable';
+    return 'unavailable';
+  }
+}
+
 /** 已登录时带 Bearer。回调把微信绑到当前用户，并 302 回 returnTo。 */
 export async function startWeChatBind(channel: WeChatChannel) {
   const scope = channel === 'mp' ? 'snsapi_userinfo' : undefined;
