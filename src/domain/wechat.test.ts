@@ -3,6 +3,7 @@ import {
   buildInviteBind,
   buildInviteRequest,
   buildPasswordBind,
+  hasValidJwt,
   isWeChatUnavailable,
   readAuthorizeUrl,
   readInvite,
@@ -46,6 +47,16 @@ describe('wechat contract', () => {
     });
     expect(() => readWeChatCodeExchange({})).toThrow('token 或 bindTicket');
     expect(() => readWeChatCodeExchange({ token: 'jwt-1' })).toThrow('token 或 bindTicket');
+  });
+
+  it('本地 JWT 有效性：只看 exp，未过期为真，过期/缺失/非法为假', () => {
+    // payload {"exp": 9999999999}（未过期）与 {"exp": 1000000000}（已过期），签名位不校验。
+    expect(hasValidJwt('eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJleHAiOiA5OTk5OTk5OTk5fQ.sig')).toBe(true);
+    expect(hasValidJwt('Bearer eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJleHAiOiA5OTk5OTk5OTk5fQ.sig')).toBe(true);
+    expect(hasValidJwt('eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJleHAiOiAxMDAwMDAwMDAwfQ.sig')).toBe(false);
+    expect(hasValidJwt('')).toBe(false);
+    expect(hasValidJwt(null)).toBe(false);
+    expect(hasValidJwt('not-a-jwt')).toBe(false);
   });
 
   it('invite role is only USER, HR or MANAGER, and settings use identities', () => {

@@ -26,7 +26,35 @@ describe('group entry', () => {
       records: [{ employeeId: 'pk1', groupId: 'g1', quantity: 10, remark: '白班' }],
     });
     expect(view.factoryName).toBe('一厂');
-    expect(view.groups[0].employees[0]).toMatchObject({ id: 'pk1', staffNo: 'EMP001', quantity: 10, remark: '白班' });
+    expect(view.groups[0].employees[0]).toMatchObject({ id: 'pk1', staffNo: 'EMP001', quantity: 10, remark: '白班', absent: false });
     expect(buildGroupEntryLink('https://zeno.asia', 'tok')).toBe('https://zeno.asia/h5/group-capacity-entry?token=tok');
+  });
+
+  it('absent 行：init 里的 absent 进视图，保存时只发 absent 不发数量', () => {
+    const view = normalizeGroupInit({
+      factory: { name: '一厂' },
+      date: '2026-11-10',
+      editable: true,
+      groups: [{ id: 'g1', name: '缝制一组', employees: [{ id: 'pk1', employeeId: 'EMP001', name: '张师傅' }] }],
+      records: [{ employeeId: 'pk1', groupId: 'g1', quantity: 0, remark: '', absent: true }],
+    });
+    expect(view.groups[0].employees[0]).toMatchObject({ quantity: 0, absent: true });
+    expect(buildGroupSavePayload({
+      token: 'tok',
+      date: '2026-11-10',
+      groupId: 'g1',
+      records: [
+        { employeeId: 'pk1', absent: true },
+        { employeeId: 'pk2', quantity: 12, remark: '白班' },
+      ],
+    })).toEqual({
+      token: 'tok',
+      date: '2026-11-10',
+      groupId: 'g1',
+      records: [
+        { employeeId: 'pk1', absent: true },
+        { employeeId: 'pk2', quantity: 12, remark: '白班' },
+      ],
+    });
   });
 });
