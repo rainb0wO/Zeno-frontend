@@ -1,0 +1,151 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # 1. 拉取源码
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      # 2. 设置 Node.js & 缓存依赖
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Cache npm
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # 3. 安装依赖并构建
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Type check and build
+        run: npm run build:check
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: check
+    # No server yet: deployment is off by default. Set the DEPLOY_ENABLED
+    # repository variable to 'true' once a server is ready. The job shows
+    # as Skipped (not Success) while disabled. Only deploy from master.
+    if: vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/master'
+
+    steps:
+      # 1. 拉取源码
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      # 2. 取回 check job 构建好的产物，不再重新构建
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: dist
+
+      # 3. 压缩 dist 目录
+      - name: Compress dist folder
+        run: |
+          tar -czf dist.tar.gz -C dist .
+
+      # 4. 上传文件到服务器
+      - name: Preflight - SSH handshake check
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # 先把服务器主机密钥记下来，再按默认配置校验（不再跳过校验）。
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts || true
+          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" -o ConnectTimeout=15 "$SSH_USER@$SSH_HOST" "echo SSH_OK"
+
+      - name: Upload dist.tar.gz to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "dist.tar.gz"
+          target: "/tmp"
+          timeout: 120s
+          command_timeout: 120s
+
+      # 5. 在服务器端清空目标目录并解压新文件
+      - name: Deploy on server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            DEPLOY_DIR="${TARGET_DIR:-/www/zeno/frontend/dist}"
+            TMP_FILE="/tmp/dist.tar.gz"
+
+            echo "==> 检查部署包是否存在：$TMP_FILE"
+            if [ ! -f "$TMP_FILE" ]; then
+              echo "❌ 未找到部署包 $TMP_FILE，终止部署（不会清空线上目录）"
+              echo "==> /tmp 目录文件列表："
+              ls -lh /tmp | head -n 50 || true
+              exit 1
+            fi
+
+            # 创建部署目录（如果不存在）
+            sudo mkdir -p "$DEPLOY_DIR"
+
+            # 清空目录（保留目录本身）
+            echo "==> 清理旧文件"
+            sudo find "$DEPLOY_DIR" -mindepth 1 -delete
+
+            # 解压新文件
+            echo "==> 解压新版本"
+            sudo tar -xzf "$TMP_FILE" -C "$DEPLOY_DIR" --strip-components=0
+
+            # 设置正确的权限
+            echo "==> 设置权限"
+            sudo chown -R nginx:nginx "$DEPLOY_DIR"
+            sudo chmod -R 755 "$DEPLOY_DIR"
+
+            # 清理临时文件
+            sudo rm -f "$TMP_FILE"
+
+            # 重新加载 Nginx
+            echo "==> 重新加载 Nginx..."
+            sudo systemctl reload nginx || true
+
+            echo "✅ 部署完成！"
