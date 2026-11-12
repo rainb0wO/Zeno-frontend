@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  check:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,16 +15,16 @@ jobs:
     steps:
       # 1. 拉取源码
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # 2. 设置 Node.js & 缓存依赖
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Cache npm
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
@@ -44,15 +44,71 @@ jobs:
       - name: Type check and build
         run: npm run build:check
 
-      # 4. 压缩 dist 目录（仅推送到 master 或手动触发时部署）
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: check
+    # PR 只跑检查，不部署。
+    if: github.event_name != 'pull_request'
+
+    steps:
+      # No server yet: only deploy when the SSH secrets are all set.
+      # This step never fails; it only records whether deployment can run.
+      - name: Check deploy secrets
+        id: secrets
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          if [ -n "$SSH_HOST" ] && [ -n "$SSH_USER" ] && [ -n "$SSH_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Deploy secrets are set; continuing with deployment."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Deploy secrets (SSH_HOST / SSH_USER / SSH_KEY) are not all set; skipping deployment."
+          fi
+
+      # 1. 拉取源码
+      - name: Checkout source
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@v7
+
+      # 2. 设置 Node.js & 缓存依赖
+      - name: Setup Node.js
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Cache npm
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # 3. 安装依赖并构建
+      - name: Install dependencies
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Type check and build
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm run build:check
+
+      # 4. 压缩 dist 目录
       - name: Compress dist folder
-        if: github.event_name != 'pull_request'
+        if: steps.secrets.outputs.ready == 'true'
         run: |
           tar -czf dist.tar.gz -C dist .
 
       # 5. 上传文件到服务器
       - name: Preflight - SSH handshake check
-        if: github.event_name != 'pull_request'
+        if: steps.secrets.outputs.ready == 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
@@ -60,7 +116,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -vvv ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo SSH_OK"
 
       - name: Upload dist.tar.gz to server
-        if: github.event_name != 'pull_request'
+        if: steps.secrets.outputs.ready == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -76,7 +132,7 @@ jobs:
 
       # 6. 在服务器端清空目标目录并解压新文件
       - name: Deploy on server via SSH
-        if: github.event_name != 'pull_request'
+        if: steps.secrets.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
