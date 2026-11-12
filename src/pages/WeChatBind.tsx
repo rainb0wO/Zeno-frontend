@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Form, Input, message } from 'antd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { readErrorMessage } from '../domain/apiEnvelope';
 import { BIND_TICKET_SECONDS } from '../domain/wechat';
 import { bindWeChatAccount, clearInviteToken, readInviteToken } from '../services/wechatAuth';
@@ -10,8 +10,10 @@ import { useUserStore } from '../stores/userStore';
 const WeChatBind = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { setToken, setUser } = useUserStore();
-  const bindTicket = params.get('bindTicket') || '';
+  // bindTicket 只走内存传递：由 WeChatCallback 经路由 state 传过来，不读 URL。
+  const bindTicket = (location.state as { bindTicket?: string } | null)?.bindTicket || '';
   const inviteToken = params.get('inviteToken') || readInviteToken();
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
